@@ -1,4 +1,4 @@
-#include <i2c.h>
+#include "i2c.h"
 #include "gpiopins.h"
 #include "systick.h"
 #include "stm32f4xx_i2c.h"
@@ -121,122 +121,62 @@ static void i2c_lowLevel_init(i2c_dev *dev)
     GPIO_PinAFConfig(dev->gpio_port->GPIOx, dev->scl_pin, dev->gpio_af);
     GPIO_PinAFConfig(dev->gpio_port->GPIOx, dev->sda_pin, dev->gpio_af);
 
-    if(dev->I2Cx == I2C1) {
-	/* Configure and enable I2C DMA TX Channel interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C1_DMA_TX_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+    /* Configure and enable I2C DMA TX Channel interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C_DMA_TX_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
-	/* Configure and enable I2C DMA RX Channel interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C1_DMA_RX_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_Init(&NVIC_InitStructure);
+    /* Configure and enable I2C DMA RX Channel interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C_DMA_RX_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_Init(&NVIC_InitStructure);
 
-	/*!< I2C DMA TX and RX channels configuration */
-	/* Enable the DMA clock */
-	RCC_AHB1PeriphClockCmd(sEE_I2C1_DMA_CLK, ENABLE);
+    /*!< I2C DMA TX and RX channels configuration */
+    /* Enable the DMA clock */
+    RCC_AHB1PeriphClockCmd(sEE_I2C_DMA_CLK, ENABLE);
 
-	/* Clear any pending flag on Rx Stream  */
-	DMA_ClearFlag(sEE_I2C1_DMA_STREAM_TX,
-		sEE1_TX_DMA_FLAG_FEIF | sEE1_TX_DMA_FLAG_DMEIF | sEE1_TX_DMA_FLAG_TEIF
-			| sEE1_TX_DMA_FLAG_HTIF | sEE1_TX_DMA_FLAG_TCIF );
-	/* Disable the EE I2C Tx DMA stream */
-	DMA_Cmd(sEE_I2C1_DMA_STREAM_TX, DISABLE);
-	/* Configure the DMA stream for the EE I2C peripheral TX direction */
-	DMA_DeInit(sEE_I2C1_DMA_STREAM_TX );
-	sEEDMA_InitStructure.DMA_Channel = sEE_I2C1_DMA_CHANNEL;
-	sEEDMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&I2C1->DR;
-	sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) 0; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_BufferSize = 0xFFFF; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	sEEDMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	sEEDMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-	sEEDMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-	sEEDMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-	sEEDMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
-	sEEDMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
-	sEEDMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
-	sEEDMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-	sEEDMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-	DMA_Init(sEE_I2C1_DMA_STREAM_TX, &sEEDMA_InitStructure);
+    /* Clear any pending flag on Rx Stream  */
+    DMA_ClearFlag(sEE_I2C_DMA_STREAM_TX,
+	    sEE_TX_DMA_FLAG_FEIF | sEE_TX_DMA_FLAG_DMEIF | sEE_TX_DMA_FLAG_TEIF
+		    | sEE_TX_DMA_FLAG_HTIF | sEE_TX_DMA_FLAG_TCIF );
+    /* Disable the EE I2C Tx DMA stream */
+    DMA_Cmd(sEE_I2C_DMA_STREAM_TX, DISABLE);
+    /* Configure the DMA stream for the EE I2C peripheral TX direction */
+    DMA_DeInit(sEE_I2C_DMA_STREAM_TX );
+    sEEDMA_InitStructure.DMA_Channel = sEE_I2C_DMA_CHANNEL;
+    sEEDMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)sEE_I2C_DR_Address;
+    sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) 0; /* This parameter will be configured durig communication */
+    sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral; /* This parameter will be configured durig communication */
+    sEEDMA_InitStructure.DMA_BufferSize = 0xFFFF; /* This parameter will be configured durig communication */
+    sEEDMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    sEEDMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    sEEDMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    sEEDMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    sEEDMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+    sEEDMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
+    sEEDMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+    sEEDMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+    sEEDMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+    sEEDMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+    DMA_Init(sEE_I2C_DMA_STREAM_TX, &sEEDMA_InitStructure);
 
-	/* Clear any pending flag on Rx Stream */
-	DMA_ClearFlag(sEE_I2C1_DMA_STREAM_RX,
-		sEE1_RX_DMA_FLAG_FEIF | sEE1_RX_DMA_FLAG_DMEIF | sEE1_RX_DMA_FLAG_TEIF
-			| sEE1_RX_DMA_FLAG_HTIF | sEE1_RX_DMA_FLAG_TCIF );
-	/* Disable the EE I2C DMA Rx stream */
-	DMA_Cmd(sEE_I2C1_DMA_STREAM_RX, DISABLE);
-	/* Configure the DMA stream for the EE I2C peripheral RX direction */
-	DMA_DeInit(sEE_I2C1_DMA_STREAM_RX );
-	DMA_Init(sEE_I2C1_DMA_STREAM_RX, &sEEDMA_InitStructure);
+    /* Clear any pending flag on Rx Stream */
+    DMA_ClearFlag(sEE_I2C_DMA_STREAM_RX,
+	    sEE_RX_DMA_FLAG_FEIF | sEE_RX_DMA_FLAG_DMEIF | sEE_RX_DMA_FLAG_TEIF
+		    | sEE_RX_DMA_FLAG_HTIF | sEE_RX_DMA_FLAG_TCIF );
+    /* Disable the EE I2C DMA Rx stream */
+    DMA_Cmd(sEE_I2C_DMA_STREAM_RX, DISABLE);
+    /* Configure the DMA stream for the EE I2C peripheral RX direction */
+    DMA_DeInit(sEE_I2C_DMA_STREAM_RX );
+    DMA_Init(sEE_I2C_DMA_STREAM_RX, &sEEDMA_InitStructure);
 
-	/* Enable the DMA Channels Interrupts */
-	DMA_ITConfig(sEE_I2C1_DMA_STREAM_TX, DMA_IT_TC, ENABLE);
-	DMA_ITConfig(sEE_I2C1_DMA_STREAM_RX, DMA_IT_TC, ENABLE);
-
-    } else if (dev->I2Cx == I2C2) {
-	/* Configure and enable I2C DMA TX Channel interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C2_DMA_TX_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
-
-	/* Configure and enable I2C DMA RX Channel interrupt */
-	NVIC_InitStructure.NVIC_IRQChannel = sEE_I2C2_DMA_RX_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_Init(&NVIC_InitStructure);
-
-	/*!< I2C DMA TX and RX channels configuration */
-	/* Enable the DMA clock */
-	RCC_AHB1PeriphClockCmd(sEE_I2C2_DMA_CLK, ENABLE);
-
-	/* Clear any pending flag on Rx Stream  */
-	DMA_ClearFlag(sEE_I2C2_DMA_STREAM_TX,
-		sEE2_TX_DMA_FLAG_FEIF | sEE2_TX_DMA_FLAG_DMEIF | sEE2_TX_DMA_FLAG_TEIF
-			| sEE2_TX_DMA_FLAG_HTIF | sEE2_TX_DMA_FLAG_TCIF );
-	/* Disable the EE I2C Tx DMA stream */
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_TX, DISABLE);
-	/* Configure the DMA stream for the EE I2C peripheral TX direction */
-	DMA_DeInit(sEE_I2C2_DMA_STREAM_TX );
-	sEEDMA_InitStructure.DMA_Channel = sEE_I2C2_DMA_CHANNEL;
-	sEEDMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&I2C2->DR;
-	sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) 0; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_BufferSize = 0xFFFF; /* This parameter will be configured durig communication */
-	sEEDMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	sEEDMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	sEEDMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-	sEEDMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
-	sEEDMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-	sEEDMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
-	sEEDMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
-	sEEDMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
-	sEEDMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-	sEEDMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-	DMA_Init(sEE_I2C2_DMA_STREAM_TX, &sEEDMA_InitStructure);
-
-	/* Clear any pending flag on Rx Stream */
-	DMA_ClearFlag(sEE_I2C2_DMA_STREAM_RX,
-		sEE2_RX_DMA_FLAG_FEIF | sEE2_RX_DMA_FLAG_DMEIF | sEE2_RX_DMA_FLAG_TEIF
-			| sEE2_RX_DMA_FLAG_HTIF | sEE2_RX_DMA_FLAG_TCIF );
-	/* Disable the EE I2C DMA Rx stream */
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_RX, DISABLE);
-	/* Configure the DMA stream for the EE I2C peripheral RX direction */
-	DMA_DeInit(sEE_I2C2_DMA_STREAM_RX );
-	DMA_Init(sEE_I2C2_DMA_STREAM_RX, &sEEDMA_InitStructure);
-
-	/* Enable the DMA Channels Interrupts */
-	DMA_ITConfig(sEE_I2C2_DMA_STREAM_TX, DMA_IT_TC, ENABLE);
-	DMA_ITConfig(sEE_I2C2_DMA_STREAM_RX, DMA_IT_TC, ENABLE);
+    /* Enable the DMA Channels Interrupts */
+    DMA_ITConfig(sEE_I2C_DMA_STREAM_TX, DMA_IT_TC, ENABLE);
+    DMA_ITConfig(sEE_I2C_DMA_STREAM_RX, DMA_IT_TC, ENABLE);
     }
-
-}
 
 void i2c_init(i2c_dev *dev, uint16_t address, uint32_t speed)
     {
@@ -289,42 +229,25 @@ void i2c_deinit(i2c_dev *dev)
  * @param  None
  * @retval None
  */
-void sEE_LowLevel_DMAConfig(i2c_dev *dev,uint32_t pBuffer, uint32_t BufferSize,
+void sEE_LowLevel_DMAConfig(uint32_t pBuffer, uint32_t BufferSize,
 	uint32_t Direction)
     {
     /* Initialize the DMA with the new parameters */
     if (Direction == sEE_DIRECTION_TX)
 	{
-	if (dev->I2Cx == I2C1){
-		/* Configure the DMA Tx Stream with the buffer address and the buffer size */
-		sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
-		sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-		sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
-		DMA_Init(sEE_I2C1_DMA_STREAM_TX, &sEEDMA_InitStructure);
-	} else if (dev->I2Cx == I2C2){
-		/* Configure the DMA Tx Stream with the buffer address and the buffer size */
-		sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
-		sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-		sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
-		DMA_Init(sEE_I2C2_DMA_STREAM_TX, &sEEDMA_InitStructure);
-	}
-
+	/* Configure the DMA Tx Stream with the buffer address and the buffer size */
+	sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
+	sEEDMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+	sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
+	DMA_Init(sEE_I2C_DMA_STREAM_TX, &sEEDMA_InitStructure);
 	}
     else
 	{
-	if(dev->I2Cx == I2C1){
-	    /* Configure the DMA Rx Stream with the buffer address and the buffer size */
-	    sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
-	    sEEDMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-	    sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
-	    DMA_Init(sEE_I2C1_DMA_STREAM_RX, &sEEDMA_InitStructure);
-	} else if (dev->I2Cx == I2C2) {
-	    /* Configure the DMA Rx Stream with the buffer address and the buffer size */
-	    sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
-	    sEEDMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-	    sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
-	    DMA_Init(sEE_I2C2_DMA_STREAM_RX, &sEEDMA_InitStructure);
-	}
+	/* Configure the DMA Rx Stream with the buffer address and the buffer size */
+	sEEDMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) pBuffer;
+	sEEDMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+	sEEDMA_InitStructure.DMA_BufferSize = (uint32_t) BufferSize;
+	DMA_Init(sEE_I2C_DMA_STREAM_RX, &sEEDMA_InitStructure);
 	}
 }
 
@@ -521,15 +444,12 @@ uint32_t i2c_write(i2c_dev *dev, uint8_t addr, uint8_t *tx_buff, uint8_t *len)
     else
 	{
     /* Configure the DMA Tx Channel with the buffer address and the buffer size */
-    sEE_LowLevel_DMAConfig(dev,(uint32_t) buffer, (uint8_t)(*len),
+    sEE_LowLevel_DMAConfig((uint32_t) buffer, (uint8_t)(*len),
 		sEE_DIRECTION_TX);
 
     /* Enable the DMA Tx Stream */
-    if (dev->I2Cx == I2C1){
-	DMA_Cmd(sEE_I2C1_DMA_STREAM_TX, ENABLE);
-    } else if(dev->I2Cx == I2C2){
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_TX, ENABLE);
-    }
+    DMA_Cmd(sEE_I2C_DMA_STREAM_TX, ENABLE);
+
     /* Enable the sEE_I2C peripheral DMA requests */
     I2C_DMACmd(dev->I2Cx, ENABLE);
 	}
@@ -662,18 +582,15 @@ uint32_t i2c_read(i2c_dev *dev, uint8_t addr, uint8_t *tx_buff, uint8_t txlen, u
 	    }
 
 	/* Configure the DMA Rx Channel with the buffer address and the buffer size */
-	sEE_LowLevel_DMAConfig(dev, (uint32_t) buffer8, (uint16_t)(*rxlen),
+	sEE_LowLevel_DMAConfig((uint32_t) buffer8, (uint16_t)(*rxlen),
 		sEE_DIRECTION_RX);
 
 	/* Inform the DMA that the next End Of Transfer Signal will be the last one */
 	I2C_DMALastTransferCmd(dev->I2Cx, ENABLE);
 
 	/* Enable the DMA Rx Stream */
-	if (dev->I2Cx == I2C1){
-		DMA_Cmd(sEE_I2C1_DMA_STREAM_RX, ENABLE);
-	} else if(dev->I2Cx == I2C2){
-		DMA_Cmd(sEE_I2C2_DMA_STREAM_RX, ENABLE);
-	}
+	DMA_Cmd(sEE_I2C_DMA_STREAM_RX, ENABLE);
+
 	/* Enable the sEE_I2C peripheral DMA requests */
 	I2C_DMACmd(dev->I2Cx, ENABLE);
 	}
@@ -711,69 +628,69 @@ uint32_t sEE_ReadBuffer(uint8_t* pBuffer, uint16_t ReadAddr,
 
     /*!< While the bus is busy */
     sEETimeout = sEE_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_BUSY ))
+    while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BUSY ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send START condition */
-    I2C_GenerateSTART(sEE_I2C2, ENABLE);
+    I2C_GenerateSTART(sEE_I2C, ENABLE);
 
     /*!< Test on EV5 and clear it (cleared by reading SR1 then writing to DR) */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_MODE_SELECT ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_MODE_SELECT ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send EEPROM address for write */
-    I2C_Send7bitAddress(sEE_I2C2, sEEAddress, I2C_Direction_Transmitter );
+    I2C_Send7bitAddress(sEE_I2C, sEEAddress, I2C_Direction_Transmitter );
 
     /*!< Test on EV6 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send the EEPROM's internal address to read from: MSB of the address first */
-    I2C_SendData(sEE_I2C2, (uint8_t)((ReadAddr & 0xFF00) >> 8));
+    I2C_SendData(sEE_I2C, (uint8_t)((ReadAddr & 0xFF00) >> 8));
 
     /*!< Test on EV8 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send the EEPROM's internal address to read from: LSB of the address */
-    I2C_SendData(sEE_I2C2, (uint8_t)(ReadAddr & 0x00FF));
+    I2C_SendData(sEE_I2C, (uint8_t)(ReadAddr & 0x00FF));
 
     /*!< Test on EV8 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_BTF ) == RESET)
+    while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BTF ) == RESET)
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send STRAT condition a second time */
-    I2C_GenerateSTART(sEE_I2C2, ENABLE);
+    I2C_GenerateSTART(sEE_I2C, ENABLE);
 
     /*!< Test on EV5 and clear it (cleared by reading SR1 then writing to DR) */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_MODE_SELECT ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_MODE_SELECT ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send EEPROM address for read */
-    I2C_Send7bitAddress(sEE_I2C2, sEEAddress, I2C_Direction_Receiver );
+    I2C_Send7bitAddress(sEE_I2C, sEEAddress, I2C_Direction_Receiver );
 
     /* If number of data to be read is 1, then DMA couldn't be used */
     /* One Byte Master Reception procedure (POLLING) ---------------------------*/
@@ -781,54 +698,54 @@ uint32_t sEE_ReadBuffer(uint8_t* pBuffer, uint16_t ReadAddr,
 	{
 	/* Wait on ADDR flag to be set (ADDR is still not cleared at this level */
 	sEETimeout = sEE_FLAG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_ADDR ) == RESET)
+	while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_ADDR ) == RESET)
 	    {
 	    if ((sEETimeout--) == 0)
 		return I2C_ERROR;
 	    }
 
 	/*!< Disable Acknowledgement */
-	I2C_AcknowledgeConfig(sEE_I2C2, DISABLE);
+	I2C_AcknowledgeConfig(sEE_I2C, DISABLE);
 
 	/* Clear ADDR register by reading SR1 then SR2 register (SR1 has already been read) */
-	(void) sEE_I2C2 ->SR2;
+	(void) sEE_I2C ->SR2;
 
 	/*!< STOP condition */
 	//I2C_GenerateSTOP(sEE_I2C, DISABLE);
 	//I2C_ClearFlag(sEE_I2C, I2C_FLAG_STOPF );
 	/* Send STOP condition */
-	I2C_GenerateSTOP(sEE_I2C2, ENABLE);
+	I2C_GenerateSTOP(sEE_I2C, ENABLE);
 
 	/* Wait for the byte to be received */
 	sEETimeout = sEE_FLAG_TIMEOUT;
-	while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_RXNE ) == RESET)
+	while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_RXNE ) == RESET)
 	    {
 	    if ((sEETimeout--) == 0)
 		return I2C_ERROR;
 	    }
 
 	/*!< Read the byte received from the EEPROM */
-	*pBuffer = I2C_ReceiveData(sEE_I2C2 );
+	*pBuffer = I2C_ReceiveData(sEE_I2C );
 
 	/*!< Decrement the read bytes counter */
 	(uint16_t)(*NumByteToRead)--;
 
 	/* Wait to make sure that STOP control bit has been cleared */
 	sEETimeout = sEE_FLAG_TIMEOUT;
-	while (sEE_I2C2 ->CR1 & I2C_CR1_STOP )
+	while (sEE_I2C ->CR1 & I2C_CR1_STOP )
 	    {
 	    if ((sEETimeout--) == 0)
 		return I2C_ERROR;
 	    }
 
 	/*!< Re-Enable Acknowledgement to be ready for another reception */
-	I2C_AcknowledgeConfig(sEE_I2C2, ENABLE);
+	I2C_AcknowledgeConfig(sEE_I2C, ENABLE);
 	}
     else/* More than one Byte Master Reception procedure (DMA) -----------------*/
 	{
 	/*!< Test on EV6 and clear it */
 	sEETimeout = sEE_FLAG_TIMEOUT;
-	while (!I2C_CheckEvent(sEE_I2C2,
+	while (!I2C_CheckEvent(sEE_I2C,
 		I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED ))
 	    {
 	    if ((sEETimeout--) == 0)
@@ -836,17 +753,17 @@ uint32_t sEE_ReadBuffer(uint8_t* pBuffer, uint16_t ReadAddr,
 	    }
 
 	/* Configure the DMA Rx Channel with the buffer address and the buffer size */
-	sEE_LowLevel_DMAConfig(_I2C2, (uint32_t) pBuffer, (uint16_t)(*NumByteToRead),
+	sEE_LowLevel_DMAConfig((uint32_t) pBuffer, (uint16_t)(*NumByteToRead),
 		sEE_DIRECTION_RX);
 
 	/* Inform the DMA that the next End Of Transfer Signal will be the last one */
-	I2C_DMALastTransferCmd(sEE_I2C2, ENABLE);
+	I2C_DMALastTransferCmd(sEE_I2C, ENABLE);
 
 	/* Enable the DMA Rx Stream */
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_RX, ENABLE);
+	DMA_Cmd(sEE_I2C_DMA_STREAM_RX, ENABLE);
 
 	/* Enable the sEE_I2C peripheral DMA requests */
-	I2C_DMACmd(sEE_I2C2, ENABLE);
+	I2C_DMACmd(sEE_I2C, ENABLE);
 	}
 
     /* If all operations OK, return sEE_OK (0) */
@@ -890,65 +807,65 @@ uint32_t sEE_WritePage(uint8_t* pBuffer, uint16_t WriteAddr, uint8_t* NumByteToW
 
     /*!< While the bus is busy */
     sEETimeout = sEE_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_BUSY ))
+    while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BUSY ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send START condition */
-    I2C_GenerateSTART(sEE_I2C2, ENABLE);
+    I2C_GenerateSTART(sEE_I2C, ENABLE);
 
     /*!< Test on EV5 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_MODE_SELECT ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_MODE_SELECT ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send EEPROM address for write */
-    I2C_Send7bitAddress(sEE_I2C2, sEEAddress, I2C_Direction_Transmitter );
+    I2C_Send7bitAddress(sEE_I2C, sEEAddress, I2C_Direction_Transmitter );
 
 	sEETimeout = sEE_FLAG_TIMEOUT;
     /*!< Test on EV6 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send the EEPROM's internal address to write to : MSB of the address first */
-    I2C_SendData(sEE_I2C2, (uint8_t)((WriteAddr & 0xFF00) >> 8));
+    I2C_SendData(sEE_I2C, (uint8_t)((WriteAddr & 0xFF00) >> 8));
 
     /*!< Test on EV8 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
 
     /*!< Send the EEPROM's internal address to write to : LSB of the address */
-    I2C_SendData(sEE_I2C2, (uint8_t)(WriteAddr & 0x00FF));
+    I2C_SendData(sEE_I2C, (uint8_t)(WriteAddr & 0x00FF));
 
     /*!< Test on EV8 and clear it */
     sEETimeout = sEE_FLAG_TIMEOUT;
-    while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
+    while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTING ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
 	}
     /* Configure the DMA Tx Channel with the buffer address and the buffer size */
-	sEE_LowLevel_DMAConfig(_I2C2,(uint32_t) pBuffer, (uint8_t)(*NumByteToWrite),
+	sEE_LowLevel_DMAConfig((uint32_t) pBuffer, (uint8_t)(*NumByteToWrite),
 		sEE_DIRECTION_TX);
 
     /* Enable the DMA Tx Stream */
-    DMA_Cmd(sEE_I2C2_DMA_STREAM_TX, ENABLE);
+    DMA_Cmd(sEE_I2C_DMA_STREAM_TX, ENABLE);
 
     /* Enable the sEE_I2C peripheral DMA requests */
-    I2C_DMACmd(sEE_I2C2, ENABLE);
+    I2C_DMACmd(sEE_I2C, ENABLE);
 
     /* If all operations OK, return sEE_OK (0) */
     return I2C_OK;
@@ -1178,7 +1095,7 @@ uint32_t sEE_WaitEepromStandbyState(void)
 
     /*!< While the bus is busy */
     sEETimeout = sEE_LONG_TIMEOUT;
-    while (I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_BUSY ))
+    while (I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BUSY ))
 	{
 	if ((sEETimeout--) == 0)
 	    return I2C_ERROR;
@@ -1190,25 +1107,25 @@ uint32_t sEE_WaitEepromStandbyState(void)
     while (1)
 	{
 	/*!< Send START condition */
-	I2C_GenerateSTART(sEE_I2C2, ENABLE);
+	I2C_GenerateSTART(sEE_I2C, ENABLE);
 
 	/*!< Test on EV5 and clear it */
 	sEETimeout = sEE_FLAG_TIMEOUT;
-	while (!I2C_CheckEvent(sEE_I2C2, I2C_EVENT_MASTER_MODE_SELECT ))
+	while (!I2C_CheckEvent(sEE_I2C, I2C_EVENT_MASTER_MODE_SELECT ))
 	    {
 	    if ((sEETimeout--) == 0)
 		return I2C_ERROR;
 	    }
 
 	/*!< Send EEPROM address for write */
-	I2C_Send7bitAddress(sEE_I2C2, sEEAddress, I2C_Direction_Transmitter );
+	I2C_Send7bitAddress(sEE_I2C, sEEAddress, I2C_Direction_Transmitter );
 
 	/* Wait for ADDR flag to be set (Slave acknowledged his address) */
 	sEETimeout = sEE_LONG_TIMEOUT;
 	do
 	    {
 	    /* Get the current value of the SR1 register */
-	    tmpSR1 = sEE_I2C2 ->SR1;
+	    tmpSR1 = sEE_I2C ->SR1;
 
 	    /* Update the timeout value and exit if it reach 0 */
 	    if ((sEETimeout--) == 0)
@@ -1223,10 +1140,10 @@ if(	tmpSR1 & I2C_SR1_ADDR)
 	    {
 	    /* Clear ADDR Flag by reading SR1 then SR2 registers (SR1 have already
 	     been read) */
-	    (void)sEE_I2C2->SR2;
+	    (void)sEE_I2C->SR2;
 
 	    /*!< STOP condition */
-	    I2C_GenerateSTOP(sEE_I2C2, ENABLE);
+	    I2C_GenerateSTOP(sEE_I2C, ENABLE);
 
 	    /* Exit the function */
 	    return I2C_OK;
@@ -1234,7 +1151,7 @@ if(	tmpSR1 & I2C_SR1_ADDR)
 	else
 	    {
 	    /*!< Clear AF flag */
-	    I2C_ClearFlag(sEE_I2C2, I2C_FLAG_AF);
+	    I2C_ClearFlag(sEE_I2C, I2C_FLAG_AF);
 	    }
 
 	/* Check if the maximum allowed number of trials has bee reached */
@@ -1250,26 +1167,26 @@ if(	tmpSR1 & I2C_SR1_ADDR)
  * @param  None
  * @retval None
  */
-void sEE_I2C1_DMA_TX_IRQHandler(void)
+void sEE_I2C_DMA_TX_IRQHandler(void)
     {
     /* Check if the DMA transfer is complete */
-    if (DMA_GetFlagStatus(sEE_I2C1_DMA_STREAM_TX, sEE1_TX_DMA_FLAG_TCIF )
+    if (DMA_GetFlagStatus(sEE_I2C_DMA_STREAM_TX, sEE_TX_DMA_FLAG_TCIF )
 	    != RESET)
 	{
 	/* Disable the DMA Tx Stream and Clear TC flag */
-	DMA_Cmd(sEE_I2C1_DMA_STREAM_TX, DISABLE);
-	DMA_ClearFlag(sEE_I2C1_DMA_STREAM_TX, sEE1_TX_DMA_FLAG_TCIF );
+	DMA_Cmd(sEE_I2C_DMA_STREAM_TX, DISABLE);
+	DMA_ClearFlag(sEE_I2C_DMA_STREAM_TX, sEE_TX_DMA_FLAG_TCIF );
 
 	/*!< Wait till all data have been physically transferred on the bus */
 	sEETimeout = sEE_LONG_TIMEOUT;
-	while (!I2C_GetFlagStatus(sEE_I2C1, I2C_FLAG_BTF ))
+	while (!I2C_GetFlagStatus(sEE_I2C, I2C_FLAG_BTF ))
 	    {
 	    if ((sEETimeout--) == 0)
 		return;
 	    }
 
 	/*!< Send STOP condition */
-	I2C_GenerateSTOP(sEE_I2C1, ENABLE);
+	I2C_GenerateSTOP(sEE_I2C, ENABLE);
 
 	/* Reset the variable holding the number of data to be written */
 	*sEEDataWritePointer = 0;
@@ -1281,71 +1198,18 @@ void sEE_I2C1_DMA_TX_IRQHandler(void)
  * @param  None
  * @retval None
  */
-void sEE_I2C1_DMA_RX_IRQHandler(void)
+void sEE_I2C_DMA_RX_IRQHandler(void)
     {
     /* Check if the DMA transfer is complete */
-    if (DMA_GetFlagStatus(sEE_I2C1_DMA_STREAM_RX, sEE1_RX_DMA_FLAG_TCIF )
+    if (DMA_GetFlagStatus(sEE_I2C_DMA_STREAM_RX, sEE_RX_DMA_FLAG_TCIF )
 	    != RESET)
 	{
 	/*!< Send STOP Condition */
-	I2C_GenerateSTOP(sEE_I2C1, ENABLE);
+	I2C_GenerateSTOP(sEE_I2C, ENABLE);
 
 	/* Disable the DMA Rx Stream and Clear TC Flag */
-	DMA_Cmd(sEE_I2C1_DMA_STREAM_RX, DISABLE);
-	DMA_ClearFlag(sEE_I2C1_DMA_STREAM_RX, sEE1_RX_DMA_FLAG_TCIF );
-
-	/* Reset the variable holding the number of data to be read */
-	*sEEDataReadPointer = 0;
-	}
-    }
-/**
- * @brief  This function handles the DMA Tx Channel interrupt Handler.
- * @param  None
- * @retval None
- */
-void sEE_I2C2_DMA_TX_IRQHandler(void)
-    {
-    /* Check if the DMA transfer is complete */
-    if (DMA_GetFlagStatus(sEE_I2C2_DMA_STREAM_TX, sEE2_TX_DMA_FLAG_TCIF )
-	    != RESET)
-	{
-	/* Disable the DMA Tx Stream and Clear TC flag */
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_TX, DISABLE);
-	DMA_ClearFlag(sEE_I2C2_DMA_STREAM_TX, sEE2_TX_DMA_FLAG_TCIF );
-
-	/*!< Wait till all data have been physically transferred on the bus */
-	sEETimeout = sEE_LONG_TIMEOUT;
-	while (!I2C_GetFlagStatus(sEE_I2C2, I2C_FLAG_BTF ))
-	    {
-	    if ((sEETimeout--) == 0)
-		return;
-	    }
-
-	/*!< Send STOP condition */
-	I2C_GenerateSTOP(sEE_I2C2, ENABLE);
-
-	/* Reset the variable holding the number of data to be written */
-	*sEEDataWritePointer = 0;
-	}
-    }
-
-/**
- * @brief  This function handles the DMA Rx Channel interrupt Handler.
- * @param  None
- * @retval None
- */
-void sEE_I2C2_DMA_RX_IRQHandler(void)
-    {
-    /* Check if the DMA transfer is complete */
-    if (DMA_GetFlagStatus(sEE_I2C2_DMA_STREAM_RX, sEE2_RX_DMA_FLAG_TCIF )
-	    != RESET)
-	{
-	/*!< Send STOP Condition */
-	I2C_GenerateSTOP(sEE_I2C2, ENABLE);
-
-	/* Disable the DMA Rx Stream and Clear TC Flag */
-	DMA_Cmd(sEE_I2C2_DMA_STREAM_RX, DISABLE);
-	DMA_ClearFlag(sEE_I2C2_DMA_STREAM_RX, sEE2_RX_DMA_FLAG_TCIF );
+	DMA_Cmd(sEE_I2C_DMA_STREAM_RX, DISABLE);
+	DMA_ClearFlag(sEE_I2C_DMA_STREAM_RX, sEE_RX_DMA_FLAG_TCIF );
 
 	/* Reset the variable holding the number of data to be read */
 	*sEEDataReadPointer = 0;
