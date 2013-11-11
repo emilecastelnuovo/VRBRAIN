@@ -30,7 +30,7 @@ static VRBRAINI2CDriver  i2cDriver(_I2C2,&i2cSemaphore);
 static VRBRAINI2CDriver  i2c2Driver(_I2C1,&i2c2Semaphore);
 static VRBRAINSPIDeviceManager spiDeviceManager;
 static VRBRAINAnalogIn analogIn;
-static VRBRAINStorage storageDriver;
+static VRBRAINStorage storageDriver(_I2C2);
 static VRBRAINGPIO gpioDriver;
 static VRBRAINRCInput rcinDriver;
 static VRBRAINRCOutput rcoutDriver;
@@ -49,7 +49,7 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
       &spiDeviceManager,
       &analogIn,
       &storageDriver,
-      &uartADriver,
+      &uartCDriver,
       &gpioDriver,
       &rcinDriver,
       &rcoutDriver,
@@ -64,23 +64,19 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
    * up to the programmer to do this in the correct order.
    * Scheduler should likely come first. */
   //delay_us(2000000);
-
   uartA->begin(57600);
-
+  uartC->begin(57600);
   scheduler->init(NULL);
-  //uartA->begin(115200);
-
-
 
   //_member->init();
   i2c->begin();
-  //i2c2->begin();
+  i2c2->begin();
   spi->init(NULL);
+  analogin->init(NULL);
   storage->init(NULL);
   rcin->init(NULL);
-
   rcout->init((void *)&_is_ppmsum);
-  analogin->init(NULL);
+
 }
 
 const HAL_VRBRAIN AP_HAL_VRBRAIN;

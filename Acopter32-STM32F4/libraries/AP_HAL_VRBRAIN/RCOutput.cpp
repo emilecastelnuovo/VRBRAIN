@@ -49,10 +49,10 @@ void VRBRAINRCOutput::InitPWM()
   analogOutPin[MOTORID4] = output_channel_ch4;
   analogOutPin[MOTORID5] = output_channel_ch5;
   analogOutPin[MOTORID6] = output_channel_ch6;
-  analogOutPin[MOTORID7] = output_channel_ch7;
-  analogOutPin[MOTORID8] = output_channel_ch8;
+  //analogOutPin[MOTORID7] = output_channel_ch7;
+  //analogOutPin[MOTORID8] = output_channel_ch8;
 
-  for(int8_t i = MOTORID1; i <= MOTORID8; i++)
+  for(int8_t i = MOTORID1; i <= MOTORID6; i++)
       {
       hal.gpio->pinMode(analogOutPin[i],PWM);
       }

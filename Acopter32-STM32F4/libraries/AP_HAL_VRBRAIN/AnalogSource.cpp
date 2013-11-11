@@ -72,7 +72,7 @@ float VRBRAINAnalogSource::voltage_average(void)
 float VRBRAINAnalogSource::voltage_latest(void)
 {
     float v = read_latest();
-    return v * (3.3f / 4095.0f);
+    return v * (3.3f / 4096.0f);
 }
 
 /*
@@ -83,7 +83,7 @@ float VRBRAINAnalogSource::voltage_latest(void)
 float VRBRAINAnalogSource::voltage_average_ratiometric(void)
 {
     float v = read_average();
-    return v * (3.3f / 4095.0f);
+    return v * (3.3f / 4096.0f);
 }
 
 void VRBRAINAnalogSource::set_pin(uint8_t pin) {

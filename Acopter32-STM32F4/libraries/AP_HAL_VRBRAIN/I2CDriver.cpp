@@ -21,10 +21,18 @@ extern const AP_HAL::HAL& hal;
 
 __IO uint32_t  i2ctimeout = I2C_TIMEOUT;
 
+VRBRAINI2CDriver::VRBRAINI2CDriver(i2c_dev *dev, AP_HAL::Semaphore* semaphore):
+	_dev(dev),
+	_semaphore(semaphore),
+	_lockup_count(0)
+{
+}
 void VRBRAINI2CDriver::begin() {
 
+    if(_dev->I2Cx == I2C1)
 	i2c_init(_dev, 0, I2C_400KHz_SPEED);
-
+    else
+	i2c_init(_dev, 2, I2C_400KHz_SPEED);
 }
 void VRBRAINI2CDriver::end() {}
 

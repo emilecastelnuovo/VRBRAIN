@@ -129,6 +129,7 @@ typedef struct i2c_dev {
     uint8_t gpio_af;     
     IRQn_Type ev_nvic_line;  /* Event IRQ number */
     IRQn_Type er_nvic_line;  /* Error IRQ number */        
+    uint32_t timeout;
 } i2c_dev;
 
 #ifdef __cplusplus
@@ -148,10 +149,10 @@ uint32_t i2c_read(i2c_dev *dev, uint8_t addr, uint8_t *tx_buff, uint8_t txlen, u
 void     sEE_DeInit(void);
 void     sEE_Init(void);
 
-uint32_t sEE_ReadBuffer(uint8_t* pBuffer, uint16_t ReadAddr, uint16_t* NumByteToRead);
-uint32_t sEE_WritePage(uint8_t* pBuffer, uint16_t WriteAddr, uint8_t* NumByteToWrite);
-uint32_t sEE_WriteBuffer(uint8_t* pBuffer, uint16_t WriteAddr, uint16_t NumByteToWrite);
-uint32_t sEE_WaitEepromStandbyState(void);
+uint32_t sEE_ReadBuffer(i2c_dev *dev, uint8_t* pBuffer, uint16_t ReadAddr, uint16_t* NumByteToRead);
+uint32_t sEE_WritePage(i2c_dev *dev, uint8_t* pBuffer, uint16_t WriteAddr, uint8_t* NumByteToWrite);
+uint32_t sEE_WriteBuffer(i2c_dev *dev, uint8_t* pBuffer, uint16_t WriteAddr, uint16_t NumByteToWrite);
+uint32_t sEE_WaitEepromStandbyState(i2c_dev *dev);
 
 void i2c_master_release_bus(const i2c_dev *dev);
 void i2c_bus_reset(const i2c_dev *dev);
