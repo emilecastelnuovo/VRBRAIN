@@ -64,9 +64,12 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
    * up to the programmer to do this in the correct order.
    * Scheduler should likely come first. */
   //delay_us(2000000);
+   scheduler->init(NULL);
+
   uartA->begin(57600);
   uartC->begin(57600);
-  scheduler->init(NULL);
+  //uartC->set_blocking_writes(true);
+
 
   //_member->init();
   i2c->begin();

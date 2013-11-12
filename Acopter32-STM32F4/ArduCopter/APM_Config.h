@@ -19,7 +19,7 @@
  * and in
  * libraries/AP_InertialSensor/AP_InertialSensor_MPU6000.h
  */
-#define ENHANCED
+//#define ENHANCED
 /*-------------END ENHANCED-----------------*/
 
 /*-------------EXTERNAL IMU-----------------*/

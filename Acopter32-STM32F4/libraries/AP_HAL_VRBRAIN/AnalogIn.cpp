@@ -41,11 +41,12 @@ using namespace VRBRAIN;
  * This seems to be determined empirically */
 #define CHANNEL_READ_REPEAT 2
 
-VRBRAINAnalogIn::VRBRAINAnalogIn() :
-    _vcc(VRBRAINAnalogSource(ANALOG_INPUT_BOARD_VCC))
+VRBRAINAnalogIn::VRBRAINAnalogIn():
+	_vcc(VRBRAINAnalogSource(ANALOG_INPUT_BOARD_VCC))
 {}
 
 void VRBRAINAnalogIn::init(void* machtnichts) {
+
     /* Register VRBRAINAnalogIn::_timer_event with the scheduler. */
     hal.scheduler->register_timer_process(AP_HAL_MEMBERPROC(&VRBRAINAnalogIn::_timer_event));
     /* Register each private channel with VRBRAINAnalogIn. */
@@ -77,6 +78,8 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 	noInterrupts();
 	_num_channels++;
 	interrupts();
+
+	//hal.console->printf_P(PSTR("Register Channel:%u on pin:%u\r\n"), _num_channels, _channels[_num_channels]->_pin );
 
 	// Start conversions:
 	if(dev != NULL){

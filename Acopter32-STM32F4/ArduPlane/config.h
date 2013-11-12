@@ -88,7 +88,6 @@
 # define CONFIG_BARO     AP_BARO_MS5611
 # define CONFIG_MS5611_SERIAL AP_BARO_MS5611_SPI
 # define CONFIG_COMPASS  AP_COMPASS_HMC5843
-# define CONFIG_PITOT_SCALING (4.0*5.0/3.3) // TO VERIFY
 # define SERIAL0_BAUD 57600
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM1
 
@@ -538,3 +537,12 @@
  # define SERIAL2_BUFSIZE 256
 #endif
 
+/*
+  build a firmware version string.
+  GIT_VERSION comes from Makefile builds
+*/
+#ifndef GIT_VERSION
+#define FIRMWARE_STRING THISFIRMWARE
+#else
+#define FIRMWARE_STRING THISFIRMWARE " (" GIT_VERSION ")"
+#endif
