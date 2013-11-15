@@ -943,7 +943,6 @@ void setup() {
             &sonar_mode_filter);
 #endif
 
-    rssi_analog_source      = hal.analogin->channel(g.rssi_pin);
     board_vcc_analog_source = hal.analogin->channel(ANALOG_INPUT_BOARD_VCC);
 
     init_ardupilot();

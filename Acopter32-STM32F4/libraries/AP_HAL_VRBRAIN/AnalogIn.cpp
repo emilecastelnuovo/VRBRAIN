@@ -72,6 +72,7 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 
     const adc_dev *dev = PIN_MAP[_channels[_num_channels]->_pin].adc_device;
 
+    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u \n"), _num_channels, _channels[_num_channels]->_pin );
 
 	/* Need to lock to increment _num_channels as it is used
 	 * by the interrupt to access _channels */
@@ -79,7 +80,6 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 	_num_channels++;
 	interrupts();
 
-	//hal.console->printf_P(PSTR("Register Channel:%u on pin:%u\r\n"), _num_channels, _channels[_num_channels]->_pin );
 
 	// Start conversions:
 	if(dev != NULL){

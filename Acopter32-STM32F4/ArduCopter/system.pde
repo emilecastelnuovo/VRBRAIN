@@ -129,6 +129,8 @@ static void init_ardupilot()
     // load parameters from EEPROM
     load_parameters();
 
+    rssi_analog_source      = hal.analogin->channel(g.rssi_pin);
+
 #if HIL_MODE != HIL_MODE_ATTITUDE
     barometer.init();
 #endif
