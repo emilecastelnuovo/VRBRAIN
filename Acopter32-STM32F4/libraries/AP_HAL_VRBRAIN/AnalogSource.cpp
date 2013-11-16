@@ -87,24 +87,23 @@ float VRBRAINAnalogSource::voltage_average_ratiometric(void)
 }
 
 void VRBRAINAnalogSource::set_pin(uint8_t pin) {
-    if (pin == _pin)
-	return;
+    if (pin != _pin) {
 
-    // ensure the pin is marked as an INPUT pin
-    if (pin != ANALOG_INPUT_NONE && pin != ANALOG_INPUT_BOARD_VCC && pin < BOARD_NR_GPIO_PINS && pin > 0) {
-        int8_t dpin = hal.gpio->analogPinToDigitalPin(pin);
-        if (dpin != -1) {
-            hal.gpio->pinMode(dpin, INPUT_ANALOG);
-        }
+	// ensure the pin is marked as an INPUT pin
+	if (pin != ANALOG_INPUT_NONE && pin != ANALOG_INPUT_BOARD_VCC && pin < BOARD_NR_GPIO_PINS) {
+	    int8_t dpin = hal.gpio->analogPinToDigitalPin(pin);
+	    if (dpin != -1) {
+		hal.gpio->pinMode(dpin, INPUT_ANALOG);
+	    }
+	}
+	noInterrupts();
+	_sum = 0;
+	_sum_count = 0;
+	_last_average = 0;
+	_latest = 0;
+	_pin = pin;
+	interrupts();
     }
-
-    noInterrupts();
-    _sum = 0;
-    _sum_count = 0;
-    _last_average = 0;
-    _latest = 0;
-    _pin = pin;
-    interrupts();
 }
 
 void VRBRAINAnalogSource::set_stop_pin(uint8_t pin) {
@@ -152,16 +151,20 @@ void VRBRAINAnalogSource::setup_read() {
     }
     const adc_dev *dev = PIN_MAP[_pin].adc_device;
 
-    if(dev != NULL)
-	{
+    if (_pin == ANALOG_INPUT_BOARD_VCC){
+	  ADC_TempSensorVrefintCmd(ENABLE);
+	  /* Wait until ADC + Temp sensor start */
+	  uint16_t T_StartupTimeDelay = 1024;
+	  while (T_StartupTimeDelay--);
+
+	  /* Enable Vrefint on Channel17 */
+	  ADC_RegularChannelConfig(ADC1, ADC_Channel_17, 2, ADC_SampleTime_56Cycles);
+    } else if(dev != NULL) {
+
 	adc_set_reg_seqlen(dev, 1);
 	uint8_t channel = 0;
 
-	if (_pin == ANALOG_INPUT_BOARD_VCC){
-	    ADC_TempSensorVrefintCmd(ENABLE);
-	    ADC_RegularChannelConfig(ADC1, ADC_Channel_Vrefint, 2, ADC_SampleTime_56Cycles);
-	}
-	else if (_pin == ANALOG_INPUT_NONE)
+	if (_pin == ANALOG_INPUT_NONE)
 	    ; // NOOP
 	else {
 	    channel = PIN_MAP[_pin].adc_channel;
@@ -171,8 +174,7 @@ void VRBRAINAnalogSource::setup_read() {
 	    ADC_RegularChannelConfig(dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
 	    adc_enable(dev);
 	}
-
-	}
+    }
 }
 
 void VRBRAINAnalogSource::stop_read() {
