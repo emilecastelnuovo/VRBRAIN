@@ -71,6 +71,7 @@ private:
 
     /* _pin designates the ADC input mux for the sample */
     uint8_t _pin;
+    adc_dev *_dev;
 
     /* _stop_pin designates a digital pin to use for
        enabling/disabling the analog device */

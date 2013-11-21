@@ -70,9 +70,9 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
     }
     _channels[_num_channels] = ch;
 
-    const adc_dev *dev = PIN_MAP[_channels[_num_channels]->_pin].adc_device;
+    adc_dev *dev = _channels[_num_channels]->_dev;
 
-    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u \n"), _num_channels, _channels[_num_channels]->_pin );
+    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u device:%s\n"), _num_channels, _channels[_num_channels]->_pin, _channels[_num_channels]->_dev );
 
 	/* Need to lock to increment _num_channels as it is used
 	 * by the interrupt to access _channels */
@@ -98,11 +98,12 @@ void VRBRAINAnalogIn::_timer_event(void)
     }
 
     //adc_reg_map *regs = ADC1->regs;
-    const adc_dev *dev = PIN_MAP[_channels[_active_channel]->_pin].adc_device;
 
     uint8_t pin = _channels[_active_channel]->_pin;
 
-    if (dev == NULL || (pin == ANALOG_INPUT_NONE)) {
+    adc_dev *dev = _channels[_active_channel]->_dev;
+
+    if (pin == ANALOG_INPUT_NONE) {
         _channels[_active_channel]->new_sample(0);
         goto next_channel;
     }
