@@ -100,15 +100,25 @@ public:
         k_param_gps_glitch,             // 70
 
         //
+        // 75: Singlecopter
+        //
+        k_param_single_servo_1 = 75,
+        k_param_single_servo_2,
+        k_param_single_servo_3,
+        k_param_single_servo_4, // 78
+
+        //
         // 80: Heli
         //
         k_param_heli_servo_1 = 80,
         k_param_heli_servo_2,
         k_param_heli_servo_3,
         k_param_heli_servo_4,
-		k_param_heli_pitch_ff,
-		k_param_heli_roll_ff,
-		k_param_heli_yaw_ff,
+        k_param_heli_pitch_ff,
+        k_param_heli_roll_ff,
+        k_param_heli_yaw_ff,
+        k_param_heli_stab_col_min,
+        k_param_heli_stab_col_max,  // 88
 
         //
         // 90: Motors
@@ -349,6 +359,12 @@ public:
     AP_Float        heli_pitch_ff;												// pitch rate feed-forward
     AP_Float        heli_roll_ff;												// roll rate feed-forward
     AP_Float        heli_yaw_ff;												// yaw rate feed-forward
+    AP_Int16        heli_stab_col_min;                                          // min collective while pilot directly controls collective in stabilize mode
+    AP_Int16        heli_stab_col_max;                                          // min collective while pilot directly controls collective in stabilize mode
+#endif
+#if FRAME_CONFIG ==     SINGLE_FRAME
+    // Single
+    RC_Channel      single_servo_1, single_servo_2, single_servo_3, single_servo_4;     // servos for four flaps
 #endif
 
     // RC channels
@@ -405,6 +421,12 @@ public:
         heli_servo_2        (CH_2),
         heli_servo_3        (CH_3),
         heli_servo_4        (CH_4),
+#endif
+#if FRAME_CONFIG ==     SINGLE_FRAME
+        single_servo_1        (CH_1),
+        single_servo_2        (CH_2),
+        single_servo_3        (CH_3),
+        single_servo_4        (CH_4),
 #endif
 
         rc_1                (CH_1),

@@ -98,9 +98,9 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: FS_BATT_ENABLE
     // @DisplayName: Battery Failsafe Enable
     // @Description: Controls whether failsafe will be invoked when battery voltage or current runs low
-    // @Values: 0:Disabled,1:Enabled
+    // @Values: 0:Disabled,1:Land,2:RTL
     // @User: Standard
-    GSCALAR(failsafe_battery_enabled, "FS_BATT_ENABLE", FS_BATTERY),
+    GSCALAR(failsafe_battery_enabled, "FS_BATT_ENABLE", FS_BATT_DISABLED),
 
     // @Param: FS_BATT_VOLTAGE
     // @DisplayName: Failsafe battery voltage
@@ -120,10 +120,10 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: FS_GPS_ENABLE
     // @DisplayName: GPS Failsafe Enable
-    // @Description: Controls whether failsafe will be invoked when gps signal is lost
-    // @Values: 0:Disabled,1:Enabled
+    // @Description: Controls what action will be taken if GPS signal is lost for at least 5 seconds
+    // @Values: 0:Disabled,1:Land,2:AltHold,3:Land even from Stabilize
     // @User: Standard
-    GSCALAR(failsafe_gps_enabled, "FS_GPS_ENABLE", FS_GPS),
+    GSCALAR(failsafe_gps_enabled, "FS_GPS_ENABLE", FS_GPS_LAND),
 
     // @Param: FS_GCS_ENABLE
     // @DisplayName: Ground Station Failsafe Enable
@@ -226,7 +226,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Land speed
     // @Description: The descent speed for the final stage of landing in cm/s
     // @Units: cm/s
-    // @Range: 20 200
+    // @Range: 30 200
     // @Increment: 10
     // @User: Standard
     GSCALAR(land_speed,             "LAND_SPEED",   LAND_SPEED),
@@ -294,42 +294,42 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: FLTMODE1
     // @DisplayName: Flight Mode 1
     // @Description: Flight mode when Channel 5 pwm is <= 1230
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode1, "FLTMODE1",               FLIGHT_MODE_1),
 
     // @Param: FLTMODE2
     // @DisplayName: Flight Mode 2
     // @Description: Flight mode when Channel 5 pwm is >1230, <= 1360
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode2, "FLTMODE2",               FLIGHT_MODE_2),
 
     // @Param: FLTMODE3
     // @DisplayName: Flight Mode 3
     // @Description: Flight mode when Channel 5 pwm is >1360, <= 1490
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode3, "FLTMODE3",               FLIGHT_MODE_3),
 
     // @Param: FLTMODE4
     // @DisplayName: Flight Mode 4
     // @Description: Flight mode when Channel 5 pwm is >1490, <= 1620
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode4, "FLTMODE4",               FLIGHT_MODE_4),
 
     // @Param: FLTMODE5
     // @DisplayName: Flight Mode 5
     // @Description: Flight mode when Channel 5 pwm is >1620, <= 1749
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode5, "FLTMODE5",               FLIGHT_MODE_5),
 
     // @Param: FLTMODE6
     // @DisplayName: Flight Mode 6
     // @Description: Flight mode when Channel 5 pwm is >=1750
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Toy,13:Sport
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,8:Position,9:Land,10:OF_Loiter,11:Drift,13:Sport
     // @User: Standard
     GSCALAR(flight_mode6, "FLTMODE6",               FLIGHT_MODE_6),
 
@@ -397,10 +397,10 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: ARMING_CHECK
     // @DisplayName: Arming check
-    // @Description: Allows enabling or disabling of pre-arming checks of receiver, accelerometer, barometer and compass
-    // @Values: 0:Disabled, 1:Enabled
+    // @Description: Allows enabling or disabling of pre-arming checks of receiver, accelerometer, barometer, compass and GPS
+    // @Values: 0:Disabled, 1:Enabled, -3:Skip Baro, -5:Skip Compass, -9:Skip GPS, -17:Skip INS, -33:Skip Parameters, -65:Skip RC, 127:Skip Voltage
     // @User: Standard
-    GSCALAR(arming_check_enabled, "ARMING_CHECK",   1),
+    GSCALAR(arming_check_enabled, "ARMING_CHECK",   ARMING_CHECK_ALL),
 
     // @Param: ANGLE_MAX
     // @DisplayName: Angle Max
@@ -434,6 +434,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Rate Pitch Feed Forward
     // @Description: Rate Pitch Feed Forward (for TradHeli Only)
     // @Range: 0 10
+    // @Increment: 0.01
     // @User: Standard
 	GSCALAR(heli_pitch_ff, "RATE_PIT_FF",            HELI_PITCH_FF),
 
@@ -441,6 +442,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Rate Roll Feed Forward
     // @Description: Rate Roll Feed Forward (for TradHeli Only)
     // @Range: 0 10
+    // @Increment: 0.01
     // @User: Standard
 	GSCALAR(heli_roll_ff, "RATE_RLL_FF",            HELI_ROLL_FF),
 
@@ -448,9 +450,44 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @DisplayName: Rate Yaw Feed Forward
     // @Description: Rate Yaw Feed Forward (for TradHeli Only)
     // @Range: 0 10
+    // @Increment: 0.01
     // @User: Standard
 	GSCALAR(heli_yaw_ff, "RATE_YAW_FF",            HELI_YAW_FF),
+
+    // @Param: STAB_COL_MIN
+    // @DisplayName: Heli Stabilize Throttle Collective Minimum
+    // @Description: Helicopter's minimum collective position while pilot directly controls collective in stabilize mode
+    // @Range: 0 500
+    // @Units: pwm
+    // @Increment: 1
+    // @User: Standard
+    GSCALAR(heli_stab_col_min, "STAB_COL_MIN", HELI_STAB_COLLECTIVE_MIN_DEFAULT),
+
+    // @Param: STAB_COL_MAX
+    // @DisplayName: Stabilize Throttle Maximum
+    // @Description: Helicopter's maximum collective position while pilot directly controls collective in stabilize mode
+    // @Range: 500 1000
+    // @Units: pwm
+    // @Increment: 1
+    // @User: Standard
+    GSCALAR(heli_stab_col_max, "STAB_COL_MAX", HELI_STAB_COLLECTIVE_MAX_DEFAULT),
 #endif
+
+#if FRAME_CONFIG ==     SINGLE_FRAME
+    // @Group: SS1_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_1,    "SS1_", RC_Channel),
+    // @Group: SS2_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_2,    "SS2_", RC_Channel),
+    // @Group: SS3_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_3,    "SS3_", RC_Channel),
+    // @Group: SS4_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_4,    "SS4_", RC_Channel),
+#endif
+
 
     // RC channel
     //-----------
@@ -931,7 +968,6 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // variables not in the g class which contain EEPROM saved variables
 
-    // variables not in the g class which contain EEPROM saved variables
 #if CAMERA == ENABLED
     // @Group: CAM_
     // @Path: ../libraries/AP_Camera/AP_Camera.cpp
@@ -1020,6 +1056,24 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Group: H_
     // @Path: ../libraries/AP_Motors/AP_MotorsHeli.cpp
     GOBJECT(motors, "H_",           AP_MotorsHeli),
+
+#elif FRAME_CONFIG == SINGLE_FRAME
+    // @Group: SS1_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_1,    "SS1_", RC_Channel),
+    // @Group: SS2_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_2,    "SS2_", RC_Channel),
+    // @Group: SS3_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_3,    "SS3_", RC_Channel),
+    // @Group: SS4_
+    // @Path: ../libraries/RC_Channel/RC_Channel.cpp
+    GGROUP(single_servo_4,    "SS4_", RC_Channel),
+    // @Group: (SingleCopter)MOT_
+    // @Path: ../libraries/AP_Motors/AP_MotorsSingle.cpp
+    GOBJECT(motors, "MOT_",           AP_MotorsSingle),
+
 #else
     // @Group: MOT_
     // @Path: ../libraries/AP_Motors/AP_Motors_Class.cpp

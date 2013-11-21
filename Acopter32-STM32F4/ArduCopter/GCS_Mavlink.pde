@@ -105,6 +105,8 @@ static NOINLINE void send_heartbeat(mavlink_channel_t chan)
         MAV_TYPE_OCTOROTOR,
 #elif (FRAME_CONFIG == HELI_FRAME)
         MAV_TYPE_HELICOPTER,
+#elif (FRAME_CONFIG == SINGLE_FRAME)  //because mavlink did not define a singlecopter, we use a rocket
+        MAV_TYPE_ROCKET,
 #else
   #error Unrecognised frame type
 #endif
@@ -1561,8 +1563,6 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
     case MAVLINK_MSG_ID_MISSION_COUNT:     // 44
     {
-        //send_text_P(SEVERITY_LOW,PSTR("waypoint count"));
-
         // decode
         mavlink_mission_count_t packet;
         mavlink_msg_mission_count_decode(msg, &packet);
