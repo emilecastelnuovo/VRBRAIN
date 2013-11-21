@@ -39,7 +39,7 @@ using namespace VRBRAIN;
 
 /* CHANNEL_READ_REPEAT: how many reads on a channel before using the value.
  * This seems to be determined empirically */
-#define CHANNEL_READ_REPEAT 2
+#define CHANNEL_READ_REPEAT 1
 
 VRBRAINAnalogIn::VRBRAINAnalogIn():
 	_vcc(VRBRAINAnalogSource(ANALOG_INPUT_BOARD_VCC))
@@ -71,8 +71,9 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
     _channels[_num_channels] = ch;
 
     adc_dev *dev = _channels[_num_channels]->_dev;
+    uint8_t pin = _channels[_num_channels]->_pin;
 
-    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u device:%s\n"), _num_channels, _channels[_num_channels]->_pin, _channels[_num_channels]->_dev );
+    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u\n"), _num_channels, pin);
 
 	/* Need to lock to increment _num_channels as it is used
 	 * by the interrupt to access _channels */
@@ -82,7 +83,8 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 
 
 	// Start conversions:
-	if(dev != NULL){
+
+	if(dev != NULL && (pin != ANALOG_INPUT_BOARD_VCC)){
 	    //adc_reg_map *regs = ADC1->regs;
 	    dev->adcx->CR2 |= (uint32_t)ADC_CR2_SWSTART;
 	}

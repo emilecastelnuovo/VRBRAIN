@@ -24,6 +24,7 @@
 #include <boards.h>
 #include <gpio_hal.h>
 #include <GPIO.h>
+#include <stm32f4xx.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -137,7 +138,7 @@ float VRBRAINAnalogSource::_read_average()
 }
 
 void VRBRAINAnalogSource::setup_read() {
-    if (_stop_pin != ANALOG_INPUT_NONE) {
+    if (_stop_pin != ANALOG_INPUT_NONE && _stop_pin < BOARD_NR_GPIO_PINS) {
         uint8_t digital_pin = hal.gpio->analogPinToDigitalPin(_stop_pin);
         hal.gpio->pinMode(digital_pin, GPIO_OUTPUT);
         hal.gpio->write(digital_pin, 1);
@@ -147,25 +148,18 @@ void VRBRAINAnalogSource::setup_read() {
     }
 
     if (_pin == ANALOG_INPUT_BOARD_VCC){
+	  /* Enable Vrefint on Channel17 */
+	  ADC_RegularChannelConfig(_dev->adcx, ADC_Channel_Vrefint, 2, ADC_SampleTime_480Cycles);
 
-	ADC_TempSensorVrefintCmd(ENABLE);
+	  ADC_TempSensorVrefintCmd(ENABLE);
 	  /* Wait until ADC + Temp sensor start */
 	  uint16_t T_StartupTimeDelay = 1024;
 	  while (T_StartupTimeDelay--);
 
-	  /* Enable Vrefint on Channel17 */
-	  ADC_RegularChannelConfig(ADC1, ADC_Channel_17, 2, ADC_SampleTime_480Cycles);
-
     } else if(_dev != NULL) {
 
 	adc_set_reg_seqlen(_dev, 1);
-	uint8_t channel = 0;
-
-	if (_pin == ANALOG_INPUT_NONE)
-	    ; // NOOP
-	else {
-	    channel = PIN_MAP[_pin].adc_channel;
-	}
+	uint8_t channel = PIN_MAP[_pin].adc_channel;
 	adc_disable(_dev);
 	ADC_RegularChannelConfig(_dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
 	adc_enable(_dev);

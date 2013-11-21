@@ -20,6 +20,7 @@
 #define __AP_HAL_VRBRAIN_ANALOGIN_H__
 
 #include <AP_HAL_VRBRAIN.h>
+#include <adc.h>
 
 #define VRBRAIN_INPUT_MAX_CHANNELS 12
 
