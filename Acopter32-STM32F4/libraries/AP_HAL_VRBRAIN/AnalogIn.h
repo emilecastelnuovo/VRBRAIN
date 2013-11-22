@@ -20,7 +20,6 @@
 #define __AP_HAL_VRBRAIN_ANALOGIN_H__
 
 #include <AP_HAL_VRBRAIN.h>
-#include <adc.h>
 
 #define VRBRAIN_INPUT_MAX_CHANNELS 12
 
@@ -63,6 +62,8 @@ public:
     float _read_average();
 
     int16_t get_pin() { return _pin; };
+protected:
+    const adc_dev* _find_device();
 private:
     /* following three are used from both an interrupt and normal thread */
     volatile uint8_t _sum_count;
@@ -72,7 +73,6 @@ private:
 
     /* _pin designates the ADC input mux for the sample */
     uint8_t _pin;
-    adc_dev *_dev;
 
     /* _stop_pin designates a digital pin to use for
        enabling/disabling the analog device */

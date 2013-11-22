@@ -35,7 +35,6 @@ VRBRAINAnalogSource::VRBRAINAnalogSource(uint8_t pin) :
     _sum(0),
     _last_average(0),
     _pin(ANALOG_INPUT_NONE),
-    _dev(NULL),
     _stop_pin(ANALOG_INPUT_NONE),
     _settle_time_ms(0)
 {
@@ -80,17 +79,13 @@ float VRBRAINAnalogSource::voltage_average_ratiometric(void)
 
 void VRBRAINAnalogSource::set_pin(uint8_t pin) {
     if (pin != _pin) {
-	adc_dev *dev = NULL;
+
 	// ensure the pin is marked as an INPUT pin
 	if (pin != ANALOG_INPUT_NONE && pin != ANALOG_INPUT_BOARD_VCC && pin < BOARD_NR_GPIO_PINS) {
 	    int8_t dpin = hal.gpio->analogPinToDigitalPin(pin);
 	    if (dpin != -1) {
 		hal.gpio->pinMode(dpin, INPUT_ANALOG);
-		dev = PIN_MAP[pin].adc_device;
 	    }
-	}
-	if(pin == ANALOG_INPUT_BOARD_VCC) {
-	    dev = _ADC1;
 	}
 	noInterrupts();
 	_sum = 0;
@@ -98,7 +93,6 @@ void VRBRAINAnalogSource::set_pin(uint8_t pin) {
 	_last_average = 0;
 	_latest = 0;
 	_pin = pin;
-	_dev = dev;
 	interrupts();
     }
 }
@@ -138,7 +132,7 @@ float VRBRAINAnalogSource::_read_average()
 }
 
 void VRBRAINAnalogSource::setup_read() {
-    if (_stop_pin != ANALOG_INPUT_NONE && _stop_pin < BOARD_NR_GPIO_PINS) {
+    if (_stop_pin != ANALOG_INPUT_NONE) {
         uint8_t digital_pin = hal.gpio->analogPinToDigitalPin(_stop_pin);
         hal.gpio->pinMode(digital_pin, GPIO_OUTPUT);
         hal.gpio->write(digital_pin, 1);
@@ -146,23 +140,31 @@ void VRBRAINAnalogSource::setup_read() {
     if (_settle_time_ms != 0) {
         _read_start_time_ms = hal.scheduler->millis();
     }
+    const adc_dev *dev = _find_device();//PIN_MAP[_pin].adc_device;
 
     if (_pin == ANALOG_INPUT_BOARD_VCC){
-	  /* Enable Vrefint on Channel17 */
-	  ADC_RegularChannelConfig(_dev->adcx, ADC_Channel_Vrefint, 2, ADC_SampleTime_480Cycles);
-
 	  ADC_TempSensorVrefintCmd(ENABLE);
 	  /* Wait until ADC + Temp sensor start */
 	  uint16_t T_StartupTimeDelay = 1024;
 	  while (T_StartupTimeDelay--);
 
-    } else if(_dev != NULL) {
+	  /* Enable Vrefint on Channel17 */
+	  ADC_RegularChannelConfig(ADC1, ADC_Channel_17, 2, ADC_SampleTime_56Cycles);
+    } else if(dev != NULL) {
 
-	adc_set_reg_seqlen(_dev, 1);
-	uint8_t channel = PIN_MAP[_pin].adc_channel;
-	adc_disable(_dev);
-	ADC_RegularChannelConfig(_dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
-	adc_enable(_dev);
+	adc_set_reg_seqlen(dev, 1);
+	uint8_t channel = 0;
+
+	if (_pin == ANALOG_INPUT_NONE)
+	    ; // NOOP
+	else {
+	    channel = PIN_MAP[_pin].adc_channel;
+	}
+	if(channel != 0){
+	    adc_disable(dev);
+	    ADC_RegularChannelConfig(dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
+	    adc_enable(dev);
+	}
     }
 }
 
@@ -200,4 +202,11 @@ void VRBRAINAnalogSource::new_sample(uint16_t sample) {
     }
 }
 
+const adc_dev* VRBRAINAnalogSource::_find_device() {
+
+    if(_pin != ANALOG_INPUT_NONE) {
+	return _ADC1;
+    }
+    return NULL;
+}
 #endif 

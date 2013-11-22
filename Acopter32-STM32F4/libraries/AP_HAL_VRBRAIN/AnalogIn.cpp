@@ -70,10 +70,9 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
     }
     _channels[_num_channels] = ch;
 
-    adc_dev *dev = _channels[_num_channels]->_dev;
-    uint8_t pin = _channels[_num_channels]->_pin;
+    const adc_dev *dev = _channels[_num_channels]->_find_device();
 
-    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u\n"), _num_channels, pin);
+    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u \n"), _num_channels, _channels[_num_channels]->_pin );
 
 	/* Need to lock to increment _num_channels as it is used
 	 * by the interrupt to access _channels */
@@ -83,12 +82,12 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 
 
 	// Start conversions:
-
-	if(dev != NULL && (pin != ANALOG_INPUT_BOARD_VCC)){
+	if(dev != NULL){
 	    //adc_reg_map *regs = ADC1->regs;
 	    dev->adcx->CR2 |= (uint32_t)ADC_CR2_SWSTART;
 	}
 }
+
 
 void VRBRAINAnalogIn::_timer_event(void)
 {
@@ -100,12 +99,11 @@ void VRBRAINAnalogIn::_timer_event(void)
     }
 
     //adc_reg_map *regs = ADC1->regs;
+    const adc_dev *dev = _channels[_num_channels]->_find_device();
 
     uint8_t pin = _channels[_active_channel]->_pin;
 
-    adc_dev *dev = _channels[_active_channel]->_dev;
-
-    if (pin == ANALOG_INPUT_NONE) {
+    if (dev == NULL || (pin == ANALOG_INPUT_NONE)) {
         _channels[_active_channel]->new_sample(0);
         goto next_channel;
     }
@@ -142,7 +140,7 @@ next_channel:
     /* Setup the next channel's conversion */
     _channels[_active_channel]->setup_read();
 
-    dev = PIN_MAP[_channels[_active_channel]->_pin].adc_device;
+    dev = _channels[_num_channels]->_find_device();
 
     if(dev != NULL)
     /* Start conversion */
