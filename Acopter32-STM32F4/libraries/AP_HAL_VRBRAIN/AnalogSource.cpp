@@ -160,11 +160,11 @@ void VRBRAINAnalogSource::setup_read() {
 	else {
 	    channel = PIN_MAP[_pin].adc_channel;
 	}
-	if(channel != 0){
+//	if(channel != 0){
 	    adc_disable(dev);
 	    ADC_RegularChannelConfig(dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
 	    adc_enable(dev);
-	}
+//	}
     }
 }
 
