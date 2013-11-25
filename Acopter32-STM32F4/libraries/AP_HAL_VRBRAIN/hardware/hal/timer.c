@@ -215,7 +215,7 @@ void timer_foreach(void (*fn)(timer_dev*)) {
     //fn(TIMER1);
     fn(TIMER2);
     fn(TIMER3);
-    //fn(TIMER4);
+    fn(TIMER4);
     //fn(TIMER5);
     //fn(TIMER6);
     fn(TIMER7);
@@ -290,10 +290,10 @@ void TIM3_IRQHandler(void) {
     dispatch_general(TIMER3);
 }
 
-/*void TIM4_IRQHandler(void) {
+void TIM4_IRQHandler(void) {
     dispatch_general(TIMER4);
 }
-
+/*
 void TIM5_IRQHandler(void) {
     dispatch_general(TIMER5);
 }

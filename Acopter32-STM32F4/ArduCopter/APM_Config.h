@@ -25,8 +25,13 @@
 /*-------------EXTERNAL IMU-----------------*/
 /* To use External IMU connected to SPI3, uuncomment this line */
 //#define CONFIG_IMU_TYPE   CONFIG_IMU_MPU6000_EXT
-//#define COMPASS_EXT
 /*-------------END EXTERNAL IMU-----------------*/
+
+/*------------EXTERNAL COMPASS----------------*/
+/* To use external compass uncomment this line. */
+/* this is still beta and only works by tweaking the libraries. */
+//#define COMPASS_EXT
+/*-----------ND EXTERNAL COMPASS--------------*/
 
 //#define FRAME_CONFIG OCTA_FRAME
 //#define FRAME_ORIENTATION      PLUS_FRAME
