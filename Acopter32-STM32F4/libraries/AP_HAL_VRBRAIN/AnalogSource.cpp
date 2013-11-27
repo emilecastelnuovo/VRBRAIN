@@ -79,7 +79,6 @@ float VRBRAINAnalogSource::voltage_average_ratiometric(void)
 
 void VRBRAINAnalogSource::set_pin(uint8_t pin) {
     if (pin != _pin) {
-
 	// ensure the pin is marked as an INPUT pin
 	if (pin != ANALOG_INPUT_NONE && pin != ANALOG_INPUT_BOARD_VCC && pin < BOARD_NR_GPIO_PINS) {
 	    int8_t dpin = hal.gpio->analogPinToDigitalPin(pin);
@@ -109,8 +108,6 @@ void VRBRAINAnalogSource::set_settle_time(uint16_t settle_time_ms)
 /* read_average is called from the normal thread (not an interrupt). */
 float VRBRAINAnalogSource::_read_average()
 {
-    uint16_t sum;
-    uint8_t sum_count;
 
     if (_sum_count == 0) {
         // avoid blocking waiting for new samples
@@ -118,17 +115,12 @@ float VRBRAINAnalogSource::_read_average()
     }
 
     /* Read and clear in a critical section */
-    noInterrupts();
-    sum = _sum;
-    sum_count = _sum_count;
+    hal.scheduler->suspend_timer_procs();
+    _last_average = _sum / _sum_count;
     _sum = 0;
     _sum_count = 0;
-
-    interrupts();
-    float avg = sum / (float) sum_count;
-
-    _last_average = avg;
-    return avg;
+    hal.scheduler->resume_timer_procs();
+    return _last_average;
 }
 
 void VRBRAINAnalogSource::setup_read() {
@@ -149,22 +141,16 @@ void VRBRAINAnalogSource::setup_read() {
 	  while (T_StartupTimeDelay--);
 
 	  /* Enable Vrefint on Channel17 */
-	  ADC_RegularChannelConfig(ADC1, ADC_Channel_17, 2, ADC_SampleTime_56Cycles);
-    } else if(dev != NULL) {
+	  ADC_RegularChannelConfig(ADC1, ADC_Channel_17, 2, ADC_SampleTime_84Cycles);
+    } else if (_pin == ANALOG_INPUT_NONE) {
 
+    } else if(dev != NULL) {
 	adc_set_reg_seqlen(dev, 1);
 	uint8_t channel = 0;
-
-	if (_pin == ANALOG_INPUT_NONE)
-	    ; // NOOP
-	else {
-	    channel = PIN_MAP[_pin].adc_channel;
-	}
-//	if(channel != 0){
-	    adc_disable(dev);
-	    ADC_RegularChannelConfig(dev->adcx, channel, 1, ADC_SampleTime_56Cycles);
-	    adc_enable(dev);
-//	}
+	channel = PIN_MAP[_pin].adc_channel;
+	adc_disable(dev);
+	    ADC_RegularChannelConfig(dev->adcx, channel, 1, ADC_SampleTime_84Cycles);
+	adc_enable(dev);
     }
 }
 

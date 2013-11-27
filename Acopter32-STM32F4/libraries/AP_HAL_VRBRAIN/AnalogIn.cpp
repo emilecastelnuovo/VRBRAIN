@@ -16,13 +16,6 @@
 /*
   Copied from: Flymaple port by Mike McCauley
  */
-#define ANALOGSOURCRE_DEBUGGING 1
-
-#if ANALOGSOURCRE_DEBUGGING
- # define Debug(fmt, args ...)  do {hal.console->printf("%s:%d: " fmt "\n", __FUNCTION__, __LINE__, ## args); } while(0)
-#else
- # define Debug(fmt, args ...)
-#endif
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 
@@ -70,22 +63,13 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
     }
     _channels[_num_channels] = ch;
 
-    const adc_dev *dev = _channels[_num_channels]->_find_device();
+    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u \n"), _num_channels, ch->_pin );
 
-    hal.console->printf_P(PSTR("Register Channel:%u on pin:%u \n"), _num_channels, _channels[_num_channels]->_pin );
-
-	/* Need to lock to increment _num_channels as it is used
-	 * by the interrupt to access _channels */
-	noInterrupts();
-	_num_channels++;
-	interrupts();
-
-
-	// Start conversions:
-	if(dev != NULL){
-	    //adc_reg_map *regs = ADC1->regs;
-	    dev->adcx->CR2 |= (uint32_t)ADC_CR2_SWSTART;
-	}
+    /* Need to lock to increment _num_channels as it is used
+     * by the interrupt to access _channels */
+    noInterrupts();
+    _num_channels++;
+    interrupts();
 }
 
 

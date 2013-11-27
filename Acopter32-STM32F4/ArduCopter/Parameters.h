@@ -83,7 +83,7 @@ public:
         k_param_circle_rate,
         k_param_sonar_gain,
         k_param_ch8_option,
-        k_param_arming_check_enabled,
+        k_param_arming_check,
         k_param_sprayer,
         k_param_angle_max,
         k_param_gps_hdop_good,
@@ -134,11 +134,13 @@ public:
         // 110: Telemetry control
         //
         k_param_gcs0 = 110,
-        k_param_gcs3,
+        k_param_gcs1,
         k_param_sysid_this_mav,
         k_param_sysid_my_gcs,
-        k_param_serial3_baud,
+        k_param_serial1_baud,
         k_param_telem_delay,
+        k_param_gcs2,
+        k_param_serial2_baud,
 
         //
         // 140: Sensor parameters
@@ -281,7 +283,10 @@ public:
     //
     AP_Int16        sysid_this_mav;
     AP_Int16        sysid_my_gcs;
-    AP_Int8         serial3_baud;
+    AP_Int8         serial1_baud;
+#if MAVLINK_COMM_NUM_BUFFERS > 2
+    AP_Int8         serial2_baud;
+#endif
     AP_Int8         telem_delay;
 
     AP_Int16        rtl_altitude;
@@ -351,7 +356,7 @@ public:
     AP_Int8         frame_orientation;
     AP_Int8         ch7_option;
     AP_Int8         ch8_option;
-    AP_Int8         arming_check_enabled;
+    AP_Int8         arming_check;
 
 #if FRAME_CONFIG ==     HELI_FRAME
     // Heli

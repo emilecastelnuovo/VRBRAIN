@@ -362,8 +362,8 @@ static AP_OpticalFlow optflow;
 ////////////////////////////////////////////////////////////////////////////////
 // GCS selection
 ////////////////////////////////////////////////////////////////////////////////
-static GCS_MAVLINK gcs0;
-static GCS_MAVLINK gcs3;
+static const uint8_t num_gcs = MAVLINK_COMM_NUM_BUFFERS;
+static GCS_MAVLINK gcs[MAVLINK_COMM_NUM_BUFFERS];
 
 ////////////////////////////////////////////////////////////////////////////////
 // SONAR selection
@@ -798,8 +798,6 @@ static AC_WPNav wp_nav(&inertial_nav, &ahrs, &g.pi_loiter_lat, &g.pi_loiter_lon,
 ////////////////////////////////////////////////////////////////////////////////
 // Performance monitoring
 ////////////////////////////////////////////////////////////////////////////////
-// The number of GPS fixes we have had
-static uint8_t gps_fix_count;
 static int16_t pmTest1;
 
 // System Timers
@@ -810,8 +808,6 @@ static uint32_t fast_loopTimer;
 static uint16_t mainLoop_count;
 // Loiter timer - Records how long we have been in loiter
 static uint32_t rtl_loiter_start_time;
-// prevents duplicate GPS messages from entering system
-static uint32_t last_gps_time;
 
 // Used to exit the roll and pitch auto trim function
 static uint8_t auto_trim_counter;
@@ -999,7 +995,6 @@ static void perf_update(void)
                             (unsigned long)perf_info_get_max_time());
     }
     perf_info_reset();
-    gps_fix_count = 0;
     pmTest1 = 0;
 }
 
@@ -1298,36 +1293,38 @@ void update_optical_flow(void)
 // called at 50hz
 static void update_GPS(void)
 {
-    // A counter that is used to grab at least 10 reads before commiting the Home location
-    static uint8_t ground_start_count  = 10;
+    static uint32_t last_gps_reading;           // time of last gps message
+    static uint8_t ground_start_count = 10;     // counter used to grab at least 10 reads before commiting the Home location
 
     g_gps->update();
 
-    if (g_gps->new_data && last_gps_time != g_gps->last_fix_time && g_gps->status() >= GPS::GPS_OK_FIX_2D) {
-        // clear new data flag
-        g_gps->new_data = false;
+    // logging and glitch protection run after every gps message
+    if (g_gps->last_message_time_ms() != last_gps_reading) {
+        last_gps_reading = g_gps->last_message_time_ms();
 
-        // save GPS time so we don't get duplicate reads
-        last_gps_time = g_gps->last_fix_time;
-
-        // log location if we have at least a 2D fix
-        if (g.log_bitmask & MASK_LOG_GPS && motors.armed()) {
+        // log GPS message
+        if ((g.log_bitmask & MASK_LOG_GPS) && motors.armed()) {
             DataFlash.Log_Write_GPS(g_gps, current_loc.alt);
         }
 
-        // for performance monitoring
-        gps_fix_count++;
-
-        // run glitch protection and update AP_Notify
-        gps_glitch.check_position();
-        if (AP_Notify::flags.gps_glitching != gps_glitch.glitching()) {
-            if (gps_glitch.glitching()) {
-                Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_GPS_GLITCH);
-            }else{
-                Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_ERROR_RESOLVED);
+        // run glitch protection and update AP_Notify if home has been initialised
+        if (ap.home_is_set) {
+            gps_glitch.check_position();
+            if (AP_Notify::flags.gps_glitching != gps_glitch.glitching()) {
+                if (gps_glitch.glitching()) {
+                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_GPS_GLITCH);
+                }else{
+                    Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_ERROR_RESOLVED);
+                }
+                AP_Notify::flags.gps_glitching = gps_glitch.glitching();
             }
-            AP_Notify::flags.gps_glitching = gps_glitch.glitching();
         }
+    }
+
+    // checks to initialise home and take location based pictures
+    if (g_gps->new_data && g_gps->status() >= GPS::GPS_OK_FIX_3D) {
+        // clear new data flag
+        g_gps->new_data = false;
 
         // check if we can initialise home yet
         if (!ap.home_is_set) {
