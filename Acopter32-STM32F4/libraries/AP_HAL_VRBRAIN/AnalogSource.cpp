@@ -33,12 +33,16 @@ using namespace VRBRAIN;
 VRBRAINAnalogSource::VRBRAINAnalogSource(uint8_t pin) :
     _sum_count(0),
     _sum(0),
+    _latest(0),
     _last_average(0),
     _pin(ANALOG_INPUT_NONE),
     _stop_pin(ANALOG_INPUT_NONE),
-    _settle_time_ms(0)
+    _settle_time_ms(0),
+    _read_start_time_ms(0)
 {
-    set_pin(pin);
+    if(pin != ANALOG_INPUT_NONE) {
+	set_pin(pin);
+    }
 }
 
 float VRBRAINAnalogSource::read_average() {
@@ -81,11 +85,9 @@ void VRBRAINAnalogSource::set_pin(uint8_t pin) {
     if (pin != _pin) {
 	// ensure the pin is marked as an INPUT pin
 	if (pin != ANALOG_INPUT_NONE && pin != ANALOG_INPUT_BOARD_VCC && pin < BOARD_NR_GPIO_PINS) {
-	    int8_t dpin = hal.gpio->analogPinToDigitalPin(pin);
-	    if (dpin != -1) {
-		hal.gpio->pinMode(dpin, INPUT_ANALOG);
-	    }
+		hal.gpio->pinMode(pin, INPUT_ANALOG);
 	}
+
 	noInterrupts();
 	_sum = 0;
 	_sum_count = 0;

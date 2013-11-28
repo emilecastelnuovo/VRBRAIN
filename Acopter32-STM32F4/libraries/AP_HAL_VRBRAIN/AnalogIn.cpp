@@ -46,7 +46,7 @@ void VRBRAINAnalogIn::init(void* machtnichts) {
     _register_channel(&_vcc);
 }
 
-VRBRAINAnalogSource* VRBRAINAnalogIn::_create_channel(int16_t chnum) {
+VRBRAINAnalogSource* VRBRAINAnalogIn::_create_channel(uint8_t chnum) {
 
     VRBRAINAnalogSource *ch = new VRBRAINAnalogSource(chnum);
     _register_channel(ch);
@@ -76,18 +76,18 @@ void VRBRAINAnalogIn::_register_channel(VRBRAINAnalogSource* ch) {
 void VRBRAINAnalogIn::_timer_event(void)
 {
 
+
     if (_num_channels == 0)
     {
         /* No channels are registered - nothing to be done. */
         return;
     }
 
+
     //adc_reg_map *regs = ADC1->regs;
-    const adc_dev *dev = _channels[_num_channels]->_find_device();
+    const adc_dev *dev = _channels[_active_channel]->_find_device();
 
-    uint8_t pin = _channels[_active_channel]->_pin;
-
-    if (dev == NULL || (pin == ANALOG_INPUT_NONE)) {
+    if (_channels[_active_channel]->_pin == ANALOG_INPUT_NONE) {
         _channels[_active_channel]->new_sample(0);
         goto next_channel;
     }
@@ -98,7 +98,6 @@ void VRBRAINAnalogIn::_timer_event(void)
 	     * are called at 1khz. */
 	    return;
 	}
-
 
     _channel_repeat_count++;
     if (_channel_repeat_count < CHANNEL_READ_REPEAT ||
@@ -124,7 +123,7 @@ next_channel:
     /* Setup the next channel's conversion */
     _channels[_active_channel]->setup_read();
 
-    dev = _channels[_num_channels]->_find_device();
+    dev = _channels[_active_channel]->_find_device();
 
     if(dev != NULL)
     /* Start conversion */
@@ -134,10 +133,10 @@ next_channel:
 
 AP_HAL::AnalogSource* VRBRAINAnalogIn::channel(int16_t ch)
 {
-    if (ch == ANALOG_INPUT_BOARD_VCC) {
+    if ((uint8_t)ch == ANALOG_INPUT_BOARD_VCC) {
             return &_vcc;
     } else {
-        return _create_channel(ch);
+        return _create_channel((uint8_t)ch);
     }
 }
 
