@@ -208,7 +208,7 @@ static void Log_Write_AutoTuneDetails(int16_t angle_cd, float rate_cds)
 
 struct PACKED log_Current {
     LOG_PACKET_HEADER;
-    int16_t throttle_in;
+    int16_t throttle_out;
     uint32_t throttle_integrator;
     int16_t battery_voltage;
     int16_t current_amps;
@@ -221,7 +221,7 @@ static void Log_Write_Current()
 {
     struct log_Current pkt = {
         LOG_PACKET_HEADER_INIT(LOG_CURRENT_MSG),
-        throttle_in         : g.rc_3.control_in,
+        throttle_out        : g.rc_3.servo_out,
         throttle_integrator : throttle_integrator,
         battery_voltage     : (int16_t) (battery.voltage() * 100.0f),
         current_amps        : (int16_t) (battery.current_amps() * 100.0f),
@@ -238,8 +238,7 @@ struct PACKED log_Motors {
 #elif FRAME_CONFIG == HEXA_FRAME || FRAME_CONFIG == Y6_FRAME
     int16_t motor_out[6];
 #elif FRAME_CONFIG == HELI_FRAME
-    int16_t motor_out[4];
-    int16_t ext_gyro_gain;
+    int16_t motor_out[6];
 #else        // quads & TRI_FRAME
     int16_t motor_out[4];
 #endif
@@ -270,13 +269,14 @@ static void Log_Write_Motors()
         motor_out   :   {motors.motor_out[AP_MOTORS_MOT_1],
                          motors.motor_out[AP_MOTORS_MOT_2],
                          motors.motor_out[AP_MOTORS_MOT_3],
-                         motors.motor_out[AP_MOTORS_MOT_4]},
-        ext_gyro_gain   : motors.ext_gyro_gain
+                         motors.motor_out[AP_MOTORS_MOT_4],
+                         motors.motor_out[AP_MOTORS_MOT_7],
+                         motors.motor_out[AP_MOTORS_MOT_8]}
 #elif FRAME_CONFIG == TRI_FRAME
         motor_out   :   {motors.motor_out[AP_MOTORS_MOT_1],
                          motors.motor_out[AP_MOTORS_MOT_2],
                          motors.motor_out[AP_MOTORS_MOT_4],
-                         motors.motor_out[g.rc_4.radio_out]}
+                         g.rc_4.radio_out}
 #else // QUAD frame
         motor_out   :   {motors.motor_out[AP_MOTORS_MOT_1],
                          motors.motor_out[AP_MOTORS_MOT_2],
@@ -427,12 +427,13 @@ struct PACKED log_Performance {
     LOG_PACKET_HEADER;
     uint8_t renorm_count;
     uint8_t renorm_blowup;
-    uint8_t gps_fix_count;
     uint16_t num_long_running;
     uint16_t num_loops;
     uint32_t max_time;
     int16_t  pm_test;
     uint8_t i2c_lockup_count;
+    uint16_t ins_error_count;
+    uint8_t inav_error_count;
 };
 
 // Write a performance monitoring packet
@@ -442,12 +443,13 @@ static void Log_Write_Performance()
         LOG_PACKET_HEADER_INIT(LOG_PERFORMANCE_MSG),
         renorm_count     : ahrs.renorm_range_count,
         renorm_blowup    : ahrs.renorm_blowup_count,
-        gps_fix_count    : gps_fix_count,
         num_long_running : perf_info_get_num_long_running(),
         num_loops        : perf_info_get_num_loops(),
         max_time         : perf_info_get_max_time(),
         pm_test          : pmTest1,
-        i2c_lockup_count : hal.i2c->lockup_count()
+        i2c_lockup_count : hal.i2c->lockup_count(),
+        ins_error_count  : ins.error_count(),
+        inav_error_count : inertial_nav.error_count()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -821,7 +823,7 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "ATDE", "cf",          "Angle,Rate" },
 #endif
     { LOG_CURRENT_MSG, sizeof(log_Current),             
-      "CURR", "hIhhhf",      "Thr,ThrInt,Volt,Curr,Vcc,CurrTot" },
+      "CURR", "hIhhhf",      "ThrOut,ThrInt,Volt,Curr,Vcc,CurrTot" },
 
 #if FRAME_CONFIG == OCTA_FRAME || FRAME_CONFIG == OCTA_QUAD_FRAME
     { LOG_MOTORS_MSG, sizeof(log_Motors),       
@@ -846,7 +848,7 @@ static const struct LogStructure log_structure[] PROGMEM = {
     { LOG_COMPASS_MSG, sizeof(log_Compass),             
       "MAG", "hhhhhhhhh",    "MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ" },
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance), 
-      "PM",  "BBBHHIhB",       "RenCnt,RenBlw,FixCnt,NLon,NLoop,MaxT,PMT,I2CErr" },
+      "PM",  "BBHHIhBHB",    "RenCnt,RenBlw,NLon,NLoop,MaxT,PMT,I2CErr,INSErr,INAVErr" },
     { LOG_CMD_MSG, sizeof(log_Cmd),                 
       "CMD", "BBBBBeLL",     "CTot,CNum,CId,COpt,Prm1,Alt,Lat,Lng" },
     { LOG_ATTITUDE_MSG, sizeof(log_Attitude),       
@@ -890,7 +892,7 @@ static void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page)
     cliSerial->printf_P(PSTR((AIRFRAME_NAME)));
  #endif
 
-    cliSerial->printf_P(PSTR("\n" THISFIRMWARE
+    cliSerial->printf_P(PSTR("\n" FIRMWARE_STRING
                              "\nFree RAM: %u\n"),
                         (unsigned) memcheck_available_memory());
 
@@ -909,6 +911,13 @@ static void start_logging()
     if (g.log_bitmask != 0 && !ap.logging_started) {
         ap.logging_started = true;
         DataFlash.StartNewLog(sizeof(log_structure)/sizeof(log_structure[0]), log_structure);
+        DataFlash.Log_Write_Message_P(PSTR(FIRMWARE_STRING));
+
+        // write system identifier as well if available
+        char sysid[40];
+        if (hal.util->get_system_id(sysid)) {
+            DataFlash.Log_Write_Message(sysid);
+        }
     }
 }
 

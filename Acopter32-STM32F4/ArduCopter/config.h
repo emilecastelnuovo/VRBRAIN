@@ -95,6 +95,7 @@
  //# define CONFIG_IMU_TYPE   CONFIG_IMU_MPU6000_EXT
  # define CONFIG_RELAY      DISABLED
  # define CONFIG_SONAR_SOURCE SONAR_SOURCE_ANALOG_PIN
+ # define CONFIG_SONAR_SOURCE_ANALOG_PIN 47
  # define MAGNETOMETER ENABLED
  //# define COMPASS_EXT
  # define CONFIG_BARO     AP_BARO_MS5611
@@ -114,37 +115,40 @@
 #ifndef FRAME_ORIENTATION
  # define FRAME_ORIENTATION      X_FRAME
 #endif
-#ifndef TOY_EDF
- # define TOY_EDF        DISABLED
-#endif
-#ifndef TOY_MIXER
- # define TOY_MIXER      TOY_LINEAR_MIXER
-#endif
 
 /////////////////////////////////////////////////////////////////////////////////
 // TradHeli defaults
 #if FRAME_CONFIG == HELI_FRAME
-  # define RC_FAST_SPEED 				125
-  # define WP_YAW_BEHAVIOR_DEFAULT      YAW_LOOK_AT_HOME
-  # define RATE_INTEGRATOR_LEAK_RATE 	0.02f
-  # define RATE_ROLL_D    				0
-  # define RATE_PITCH_D       			0
-  # define HELI_PITCH_FF				0
-  # define HELI_ROLL_FF					0
-  # define HELI_YAW_FF					0  
-  # define STABILIZE_THROTTLE			THROTTLE_MANUAL
+  # define RC_FAST_SPEED                125
+  # define WP_YAW_BEHAVIOR_DEFAULT      WP_YAW_BEHAVIOR_LOOK_AHEAD
+  # define RATE_INTEGRATOR_LEAK_RATE    0.02f
+  # define RATE_ROLL_D                  0
+  # define RATE_PITCH_D                 0
+  # define HELI_PITCH_FF                0
+  # define HELI_ROLL_FF                 0
+  # define HELI_YAW_FF                  0  
+  # define STABILIZE_THR                THROTTLE_MANUAL_HELI
   # define MPU6K_FILTER                 10
+  # define HELI_STAB_COLLECTIVE_MIN_DEFAULT   0
+  # define HELI_STAB_COLLECTIVE_MAX_DEFAULT   1000
+  # define THR_MIN_DEFAULT              0
+  # ifndef HELI_CC_COMP
+    #define HELI_CC_COMP DISABLED
+  #endif
+  # ifndef HELI_PIRO_COMP
+    #define HELI_PIRO_COMP DISABLED
+  #endif
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////
 // Y6 defaults
 #if FRAME_CONFIG == Y6_FRAME
-  # define RATE_ROLL_P    				0.1f
-  # define RATE_ROLL_D    				0.006f
-  # define RATE_PITCH_P    				0.1f
-  # define RATE_PITCH_D    				0.006f
-  # define RATE_YAW_P    				0.150f
-  # define RATE_YAW_I    				0.015f
+  # define RATE_ROLL_P                  0.1f
+  # define RATE_ROLL_D                  0.006f
+  # define RATE_PITCH_P                 0.1f
+  # define RATE_PITCH_D                 0.006f
+  # define RATE_YAW_P                   0.150f
+  # define RATE_YAW_I                   0.015f
 #endif
 
 
@@ -206,7 +210,6 @@
 #elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
  # define LED_ON           HIGH
  # define LED_OFF          LOW
- # define CONFIG_SONAR_SOURCE_ANALOG_PIN 47
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,13 +234,13 @@
  #define COPTER_LED_8 AN11      // Motor LED
 #elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
  #define COPTER_LED_1 102  	// Motor or Aux LED
- #define COPTER_LED_2 255  	// Motor LED or Beeper
+ #define COPTER_LED_2 254  	// Motor LED or Beeper
  #define COPTER_LED_3 65  	// Motor or GPS LED
- #define COPTER_LED_4 255  	// Motor or GPS LED
- #define COPTER_LED_5 255  	// Motor or GPS LED
- #define COPTER_LED_6 255  	// Motor or GPS LED
- #define COPTER_LED_7 255  	// Motor or GPS LED
- #define COPTER_LED_8 255  	// Motor or GPS LED
+ #define COPTER_LED_4 254  	// Motor or GPS LED
+ #define COPTER_LED_5 254  	// Motor or GPS LED
+ #define COPTER_LED_6 254  	// Motor or GPS LED
+ #define COPTER_LED_7 254  	// Motor or GPS LED
+ #define COPTER_LED_8 254  	// Motor or GPS LED
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL || CONFIG_HAL_BOARD == HAL_BOARD_PX4
  #define COPTER_LED_1 AN8       // Motor or Aux LED
  #define COPTER_LED_2 AN9       // Motor LED
@@ -357,8 +360,11 @@
 #ifndef SERIAL0_BAUD
  # define SERIAL0_BAUD                   115200
 #endif
-#ifndef SERIAL3_BAUD
- # define SERIAL3_BAUD                    57600
+#ifndef SERIAL1_BAUD
+ # define SERIAL1_BAUD                    57600
+#endif
+#ifndef SERIAL2_BAUD
+ # define SERIAL2_BAUD                    57600
 #endif
 
 
@@ -381,15 +387,7 @@
  # define BOARD_VOLTAGE_MAX             5800        // max board voltage in milli volts for pre-arm checks
 #endif
 
-// Battery failsafe
-#ifndef FS_BATTERY
- # define FS_BATTERY              DISABLED
-#endif
-
 // GPS failsafe
-#ifndef FS_GPS
- # define FS_GPS                        ENABLED
-#endif
 #ifndef FAILSAFE_GPS_TIMEOUT_MS
  # define FAILSAFE_GPS_TIMEOUT_MS       5000    // gps failsafe triggers after 5 seconds with no GPS
 #endif
@@ -513,12 +511,6 @@
 //////////////////////////////////////////////////////////////////////////////
 // Throttle Failsafe
 //
-// possible values for FS_THR parameter
-#define FS_THR_DISABLED                    0
-#define FS_THR_ENABLED_ALWAYS_RTL          1
-#define FS_THR_ENABLED_CONTINUE_MISSION    2
-#define FS_THR_ENABLED_ALWAYS_LAND         3
-
 #ifndef FS_THR_VALUE_DEFAULT
  # define FS_THR_VALUE_DEFAULT             975
 #endif
@@ -564,6 +556,17 @@
 
 
 // Flight mode roll, pitch, yaw, throttle and navigation definitions
+
+// Stabilize Mode
+#ifndef STABILIZE_YAW
+ # define STABILIZE_YAW           	YAW_HOLD
+#endif
+#ifndef STABILIZE_RP
+ # define STABILIZE_RP           	ROLL_PITCH_STABLE
+#endif
+#ifndef STABILIZE_THR
+ # define STABILIZE_THR           	THROTTLE_MANUAL_TILT_COMPENSATED
+#endif
 
 // Acro Mode
 #ifndef ACRO_YAW
@@ -1091,6 +1094,15 @@
 // experimental mpu6000 DMP code
 #ifndef SECONDARY_DMP_ENABLED
  # define SECONDARY_DMP_ENABLED DISABLED
+#endif
+/*
+  build a firmware version string.
+  GIT_VERSION comes from Makefile builds
+*/
+#ifndef GIT_VERSION
+#define FIRMWARE_STRING THISFIRMWARE
+#else
+#define FIRMWARE_STRING THISFIRMWARE " (" GIT_VERSION ")"
 #endif
 
 #endif // __ARDUCOPTER_CONFIG_H__

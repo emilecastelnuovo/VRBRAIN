@@ -18,10 +18,10 @@ TOOLCHAIN = ARM
 include $(MK_DIR)/find_tools.mk
 
 HARDWARE := leaflabs
-MCU := STM32F407VG
-FAMILY := cortex-m4
-F_CPU := 168000000L
-LINKER := flash.ld
+MCU := STM32F103RE
+FAMILY := cortex-m3
+F_CPU := 72000000L
+LINKER := maple_RET6/flash.ld
 HARDWARE_CORE := maple
 UPLOADER := dfu-util
 USBID := 1EAF:0003

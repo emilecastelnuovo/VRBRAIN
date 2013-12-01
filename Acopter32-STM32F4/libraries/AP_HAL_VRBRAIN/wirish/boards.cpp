@@ -45,7 +45,7 @@ static void setupNVIC(void);
 static void setupADC(void);
 static void setupTimers(void);
 static void enableFPU(void);
-//static void usb_init(void);
+static void usb_init(void);
 
 void init(void) {
     enableFPU();
@@ -62,9 +62,9 @@ void init(void) {
     SystemCoreClockUpdate();
 
     boardInit();
-    //usb_init();
+    usb_init();
 }
-/*
+
 void usb_init(void){
     usb_attr_t usb_attr;
 
@@ -82,7 +82,7 @@ void usb_init(void){
 
     usb_ioctl(I_USB_SETATTR, &usb_attr);
 }
-*/
+
 void enableFPU(void){
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
 	SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));	// set CP10 and CP11 Full Access
@@ -139,6 +139,7 @@ static void setupTimers() {
 //}
 
 static void timerDefaultConfig(timer_dev *dev) {
+
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	
     timer_reset(dev);
@@ -189,7 +190,7 @@ static void timerDefaultConfig(timer_dev *dev) {
 		TIM_TimeBaseInit(dev->regs, &TIM_TimeBaseStructure);
 	
         for (int channel = 1; channel <= 4; channel++) {
-
+            
 			switch (channel)
 			{
 				case 1:
@@ -209,6 +210,7 @@ static void timerDefaultConfig(timer_dev *dev) {
 					TIM_OC4PreloadConfig(dev->regs, TIM_OCPreload_Enable);					
 					break;
 			}
+                
         }
         // fall-through
     case TIMER_BASIC:
