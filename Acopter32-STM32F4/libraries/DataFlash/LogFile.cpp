@@ -689,7 +689,6 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
 {
     const Vector3f &gyro = ins.get_gyro();
     const Vector3f &accel = ins.get_accel();
-    const float Temp = ins.get_temperature();
     struct log_IMU pkt = {
         LOG_PACKET_HEADER_INIT(LOG_IMU_MSG),
         timestamp : hal.scheduler->millis(),
@@ -698,8 +697,7 @@ void DataFlash_Class::Log_Write_IMU(const AP_InertialSensor &ins)
         gyro_z  : gyro.z,
         accel_x : accel.x,
         accel_y : accel.y,
-        accel_z : accel.z,
-        temp	: Temp
+        accel_z : accel.z
     };
     WriteBlock(&pkt, sizeof(pkt));
 }

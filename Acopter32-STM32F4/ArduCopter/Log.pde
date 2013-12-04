@@ -214,6 +214,7 @@ struct PACKED log_Current {
     int16_t current_amps;
     uint16_t board_voltage;
     float current_total;
+    float ins_temp;
 };
 
 // Write an Current data packet
@@ -226,7 +227,8 @@ static void Log_Write_Current()
         battery_voltage     : (int16_t) (battery.voltage() * 100.0f),
         current_amps        : (int16_t) (battery.current_amps() * 100.0f),
         board_voltage       : board_voltage(),
-        current_total       : battery.current_total_mah()
+        current_total       : battery.current_total_mah(),
+        ins_temp            : ins.get_temperature()
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -823,7 +825,7 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "ATDE", "cf",          "Angle,Rate" },
 #endif
     { LOG_CURRENT_MSG, sizeof(log_Current),             
-      "CURR", "hIhhhf",      "ThrOut,ThrInt,Volt,Curr,Vcc,CurrTot" },
+      "CURR", "hIhhhff",      "ThrOut,ThrInt,Volt,Curr,Vcc,CurrTot,InsTemp" },
 
 #if FRAME_CONFIG == OCTA_FRAME || FRAME_CONFIG == OCTA_QUAD_FRAME
     { LOG_MOTORS_MSG, sizeof(log_Motors),       
