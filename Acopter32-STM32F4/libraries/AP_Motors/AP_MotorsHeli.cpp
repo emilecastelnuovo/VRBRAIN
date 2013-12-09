@@ -270,7 +270,7 @@ void AP_MotorsHeli::output_min()
 }
 
 
-// output_test - wiggle servos in order to show connections are correct
+// output_test - spin each motor for a moment to allow the user to confirm the motor order and spin direction
 void AP_MotorsHeli::output_test()
 {
     int16_t i;
@@ -636,12 +636,6 @@ void AP_MotorsHeli::move_swash(int16_t roll_out, int16_t pitch_out, int16_t coll
     if (_tail_type == AP_MOTORS_HELI_TAILTYPE_SERVO_EXTGYRO) {
         write_aux(_ext_gyro_gain);
     }
-
-    // to be compatible with other frame types
-    motor_out[AP_MOTORS_MOT_1] = _servo_1->radio_out;
-    motor_out[AP_MOTORS_MOT_2] = _servo_2->radio_out;
-    motor_out[AP_MOTORS_MOT_3] = _servo_3->radio_out;
-    motor_out[AP_MOTORS_MOT_4] = _servo_4->radio_out;
 }
 
 // rsc_control - update value to send to tail and main rotor's ESC
@@ -706,11 +700,12 @@ void AP_MotorsHeli::rotor_ramp(int16_t rotor_target)
     // range check rotor_target
     rotor_target = constrain_int16(rotor_target,0,1000);
 
-    // initialise rotor_out to our estimated rotor speed
-    _rotor_out = _rotor_speed_estimate;
-
     // ramp rotor esc output towards target
     if (_rotor_out < rotor_target) {
+        // allow rotor out to jump to rotor's current speed
+        if (_rotor_out < _rotor_speed_estimate) {
+            _rotor_out = _rotor_speed_estimate;
+        }
         // ramp up slowly to target
         _rotor_out += _rsc_ramp_increment;
         if (_rotor_out > rotor_target) {
@@ -718,15 +713,15 @@ void AP_MotorsHeli::rotor_ramp(int16_t rotor_target)
         }
     }else{
         // ramping down happens instantly
-            _rotor_out = rotor_target;
-        }
+        _rotor_out = rotor_target;
+    }
 
     // ramp rotor speed estimate towards rotor out
     if (_rotor_speed_estimate < _rotor_out) {
         _rotor_speed_estimate += _rsc_runup_increment;
         if (_rotor_speed_estimate > _rotor_out) {
             _rotor_speed_estimate = _rotor_out;
-    }
+        }
     }else{
         _rotor_speed_estimate -= _rsc_runup_increment;
         if (_rotor_speed_estimate < _rotor_out) {
@@ -743,7 +738,7 @@ void AP_MotorsHeli::rotor_ramp(int16_t rotor_target)
     }
 
     // output to rsc servo
-        write_rsc(_rotor_out);
+    write_rsc(_rotor_out);
 }
 
 // tail_ramp - ramps tail motor towards target.  Only used for direct drive variable pitch tails
@@ -795,8 +790,6 @@ void AP_MotorsHeli::write_rsc(int16_t servo_out)
     _servo_rsc->servo_out = servo_out;
     _servo_rsc->calc_pwm();
     hal.rcout->write(AP_MOTORS_HELI_RSC, _servo_rsc->radio_out);
-    // put radio out into motors array for reporting purposes
-    motor_out[AP_MOTORS_MOT_8] = _servo_rsc->radio_out;
 }
 
 // write_aux - outputs pwm onto output aux channel (ch7)
@@ -806,6 +799,4 @@ void AP_MotorsHeli::write_aux(int16_t servo_out)
     _servo_aux->servo_out = servo_out;
     _servo_aux->calc_pwm();
     hal.rcout->write(AP_MOTORS_HELI_AUX, _servo_aux->radio_out);
-    // put radio out into motors array for reporting purposes
-    motor_out[AP_MOTORS_MOT_7] = _servo_aux->radio_out;
 }

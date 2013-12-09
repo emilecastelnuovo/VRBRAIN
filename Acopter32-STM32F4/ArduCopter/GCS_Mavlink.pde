@@ -249,16 +249,16 @@ static void NOINLINE send_location(mavlink_channel_t chan)
         g_gps->velocity_north() * 100,  // X speed cm/s (+ve North)
         g_gps->velocity_east()  * 100,  // Y speed cm/s (+ve East)
         g_gps->velocity_down()  * -100, // Z speed cm/s (+ve up)
-        g_gps->ground_course_cd);          // course in 1/100 degree
+        ahrs.yaw_sensor);               // compass heading in 1/100 degree
 }
 
 static void NOINLINE send_nav_controller_output(mavlink_channel_t chan)
 {
     mavlink_msg_nav_controller_output_send(
         chan,
-        nav_roll / 1.0e2f,
-        nav_pitch / 1.0e2f,
-        wp_bearing / 1.0e2f,
+        control_roll / 1.0e2f,
+        control_pitch / 1.0e2f,
+        control_yaw / 1.0e2f,
         wp_bearing / 1.0e2f,
         wp_distance / 1.0e2f,
         altitude_error / 1.0e2f,
@@ -413,18 +413,27 @@ static void NOINLINE send_radio_in(mavlink_channel_t chan)
 
 static void NOINLINE send_radio_out(mavlink_channel_t chan)
 {
+    uint8_t i;
+    uint16_t rcout[8];
+    hal.rcout->read(rcout,8);
+    // clear out unreasonable values
+    for (i=0; i<8; i++) {
+        if (rcout[i] > 10000) {
+            rcout[i] = 0;
+        }
+    }
     mavlink_msg_servo_output_raw_send(
         chan,
         micros(),
         0, // port
-        motors.motor_out[AP_MOTORS_MOT_1],
-        motors.motor_out[AP_MOTORS_MOT_2],
-        motors.motor_out[AP_MOTORS_MOT_3],
-        motors.motor_out[AP_MOTORS_MOT_4],
-        motors.motor_out[AP_MOTORS_MOT_5],
-        motors.motor_out[AP_MOTORS_MOT_6],
-        motors.motor_out[AP_MOTORS_MOT_7],
-        motors.motor_out[AP_MOTORS_MOT_8]);
+        rcout[0],
+        rcout[1],
+        rcout[2],
+        rcout[3],
+        rcout[4],
+        rcout[5],
+        rcout[6],
+        rcout[7]);
 }
 
 static void NOINLINE send_vfr_hud(mavlink_channel_t chan)

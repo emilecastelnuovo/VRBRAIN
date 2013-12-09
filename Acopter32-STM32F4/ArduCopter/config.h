@@ -190,71 +190,14 @@
 // LED and IO Pins
 //
 #if CONFIG_HAL_BOARD == HAL_BOARD_APM1
- # define LED_ON           HIGH
- # define LED_OFF          LOW
 #elif CONFIG_HAL_BOARD == HAL_BOARD_APM2
- # define LED_ON           LOW
- # define LED_OFF          HIGH
 #elif CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
- # define LED_ON           LOW
- # define LED_OFF          HIGH
 #elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
- # define LED_ON           LOW
- # define LED_OFF          HIGH
 #elif CONFIG_HAL_BOARD == HAL_BOARD_FLYMAPLE
- # define LED_ON           LOW
- # define LED_OFF          HIGH
 #elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
  # define LED_ON           LOW
  # define LED_OFF          HIGH
-#elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
- # define LED_ON           HIGH
- # define LED_OFF          LOW
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-// CopterLEDs
-//
-
-#ifndef COPTER_LEDS
- #define COPTER_LEDS ENABLED
-#endif
-
-#define COPTER_LED_ON           HIGH
-#define COPTER_LED_OFF          LOW
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2
- #define COPTER_LED_1 AN4       // Motor or Aux LED
- #define COPTER_LED_2 AN5       // Motor LED or Beeper
- #define COPTER_LED_3 AN6       // Motor or GPS LED
- #define COPTER_LED_4 AN7       // Motor LED
- #define COPTER_LED_5 AN8       // Motor LED
- #define COPTER_LED_6 AN9       // Motor LED
- #define COPTER_LED_7 AN10      // Motor LED
- #define COPTER_LED_8 AN11      // Motor LED
-#elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
- #define COPTER_LED_1 102  	// Motor or Aux LED
- #define COPTER_LED_2 254  	// Motor LED or Beeper
- #define COPTER_LED_3 65  	// Motor or GPS LED
- #define COPTER_LED_4 254  	// Motor or GPS LED
- #define COPTER_LED_5 254  	// Motor or GPS LED
- #define COPTER_LED_6 254  	// Motor or GPS LED
- #define COPTER_LED_7 254  	// Motor or GPS LED
- #define COPTER_LED_8 254  	// Motor or GPS LED
-#elif CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL || CONFIG_HAL_BOARD == HAL_BOARD_PX4
- #define COPTER_LED_1 AN8       // Motor or Aux LED
- #define COPTER_LED_2 AN9       // Motor LED
- #define COPTER_LED_3 AN10      // Motor or GPS LED
- #define COPTER_LED_4 AN11      // Motor LED
- #define COPTER_LED_5 AN12      // Motor LED
- #define COPTER_LED_6 AN13      // Motor LED
- #define COPTER_LED_7 AN14      // Motor LED
- #define COPTER_LED_8 AN15      // Motor LED
-#else
- // not supported yet on this board
- #undef COPTER_LEDS
-#endif
-
 
 //////////////////////////////////////////////////////////////////////////////
 // Barometer
@@ -305,7 +248,7 @@
 #endif
 
 #ifndef SONAR_GAIN_DEFAULT
- # define SONAR_GAIN_DEFAULT 2.0            // gain for controlling how quickly sonar range adjusts target altitude (lower means slower reaction)
+ # define SONAR_GAIN_DEFAULT 0.8            // gain for controlling how quickly sonar range adjusts target altitude (lower means slower reaction)
 #endif
 
 #ifndef THR_SURFACE_TRACKING_VELZ_MAX
@@ -426,6 +369,17 @@
 #else // PX4, SITL
  #ifndef COMPASS_MAGFIELD_EXPECTED
   #define COMPASS_MAGFIELD_EXPECTED      530        // pre arm will fail if mag field > 874 or < 185
+ #endif
+#endif
+
+// max compass offset length (i.e. sqrt(offs_x^2+offs_y^2+offs_Z^2))
+#ifndef CONFIG_ARCH_BOARD_PX4FMU_V1
+ #ifndef COMPASS_OFFSETS_MAX
+  # define COMPASS_OFFSETS_MAX          600         // PX4 onboard compass has high offsets
+ #endif
+#else   // APM1, APM2, SITL, FLYMAPLE, etc
+ #ifndef COMPASS_OFFSETS_MAX
+  # define COMPASS_OFFSETS_MAX          500
  #endif
 #endif
 
@@ -1002,74 +956,34 @@
  # define LOGGING_ENABLED                ENABLED
 #endif
 
-
-#ifndef LOG_ATTITUDE_FAST
- # define LOG_ATTITUDE_FAST             DISABLED
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+ // APM1 & APM2 default logging
+ # define DEFAULT_LOG_BITMASK \
+    MASK_LOG_ATTITUDE_MED | \
+    MASK_LOG_GPS | \
+    MASK_LOG_PM | \
+    MASK_LOG_CTUN | \
+    MASK_LOG_NTUN | \
+    MASK_LOG_RCIN | \
+    MASK_LOG_CMD | \
+    MASK_LOG_CURRENT
+#else
+ // PX4, Pixhawk, FlyMaple default logging
+ # define DEFAULT_LOG_BITMASK \
+    MASK_LOG_ATTITUDE_MED | \
+    MASK_LOG_GPS | \
+    MASK_LOG_PM | \
+    MASK_LOG_CTUN | \
+    MASK_LOG_NTUN | \
+    MASK_LOG_RCIN | \
+    MASK_LOG_IMU | \
+    MASK_LOG_CMD | \
+    MASK_LOG_CURRENT | \
+    MASK_LOG_RCOUT | \
+    MASK_LOG_COMPASS | \
+    MASK_LOG_INAV | \
+    MASK_LOG_CAMERA
 #endif
-#ifndef LOG_ATTITUDE_MED
- # define LOG_ATTITUDE_MED              ENABLED
-#endif
-#ifndef LOG_GPS
- # define LOG_GPS                       ENABLED
-#endif
-#ifndef LOG_PM
- # define LOG_PM                        ENABLED
-#endif
-#ifndef LOG_CTUN
- # define LOG_CTUN                      ENABLED
-#endif
-#ifndef LOG_NTUN
- # define LOG_NTUN                      ENABLED
-#endif
-#ifndef LOG_IMU
- # define LOG_IMU                       DISABLED
-#endif
-#ifndef LOG_CMD
- # define LOG_CMD                       ENABLED
-#endif
-// current
-#ifndef LOG_CURRENT
- # define LOG_CURRENT                   ENABLED
-#endif
-// quad motor PWMs
-#ifndef LOG_MOTORS
- # define LOG_MOTORS                    DISABLED
-#endif
-// optical flow
-#ifndef LOG_OPTFLOW
- # define LOG_OPTFLOW                   DISABLED
-#endif
-#ifndef LOG_PID
- # define LOG_PID                       DISABLED
-#endif
-#ifndef LOG_COMPASS
- # define LOG_COMPASS                   DISABLED
-#endif
-#ifndef LOG_INAV
- # define LOG_INAV                      DISABLED
-#endif
-#ifndef LOG_CAMERA
- # define LOG_CAMERA                    ENABLED
-#endif
-
-// calculate the default log_bitmask
-#define LOGBIT(_s)     (LOG_ ## _s ? MASK_LOG_ ## _s : 0)
-
-#define DEFAULT_LOG_BITMASK \
-    LOGBIT(ATTITUDE_FAST)   | \
-    LOGBIT(ATTITUDE_MED)    | \
-    LOGBIT(GPS)             | \
-    LOGBIT(PM)              | \
-    LOGBIT(CTUN)            | \
-    LOGBIT(NTUN)            | \
-    LOGBIT(IMU)             | \
-    LOGBIT(CMD)             | \
-    LOGBIT(CURRENT)         | \
-    LOGBIT(MOTORS)          | \
-    LOGBIT(OPTFLOW)         | \
-    LOGBIT(PID)             | \
-    LOGBIT(COMPASS)         | \
-    LOGBIT(INAV)
 
 //////////////////////////////////////////////////////////////////////////////
 // AP_Limits Defaults

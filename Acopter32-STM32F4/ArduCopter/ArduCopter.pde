@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduCopter V3.1.12.rc7"
+#define THISFIRMWARE "ArduCopter V3.2-dev"
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -501,15 +501,6 @@ float tuning_value;
 // used to limit the rate that the pid controller output is logged so that it doesn't negatively affect performance
 static uint8_t pid_log_counter;
 
-////////////////////////////////////////////////////////////////////////////////
-// LED output
-////////////////////////////////////////////////////////////////////////////////
-// Blinking indicates GPS status
-static uint8_t copter_leds_GPS_blink;
-// Blinking indicates battery status
-static uint8_t copter_leds_motor_blink;
-// Navigation confirmation blinks
-static int8_t copter_leds_nav_blink;
 
 ////////////////////////////////////////////////////////////////////////////////
 // GPS variables
@@ -553,8 +544,8 @@ static uint8_t command_cond_index;
 // NAV_LOCATION - have we reached the desired location?
 // NAV_DELAY    - have we waited at the waypoint the desired time?
 static float lon_error, lat_error;      // Used to report how many cm we are from the next waypoint or loiter target position
-static int16_t control_roll;
-static int16_t control_pitch;
+static int16_t control_roll;            // desired roll angle of copter in centi-degrees
+static int16_t control_pitch;           // desired pitch angle of copter in centi-degrees
 static uint8_t rtl_state;               // records state of rtl (initial climb, returning home, etc)
 static uint8_t land_state;              // records state of land (flying to location, descending)
 
@@ -716,12 +707,6 @@ static struct   Location command_cond_queue;
 ////////////////////////////////////////////////////////////////////////////////
 // Navigation Roll/Pitch functions
 ////////////////////////////////////////////////////////////////////////////////
-// all angles are deg * 100 : target yaw angle
-// The Commanded ROll from the autopilot.
-static int32_t nav_roll;
-// The Commanded pitch from the autopilot. negative Pitch means go forward.
-static int32_t nav_pitch;
-
 // The Commanded ROll from the autopilot based on optical flow sensor.
 static int32_t of_roll;
 // The Commanded pitch from the autopilot based on optical flow sensor. negative Pitch means go forward.
@@ -742,7 +727,7 @@ static uint32_t throttle_integrator;
 // Navigation Yaw control
 ////////////////////////////////////////////////////////////////////////////////
 // The Commanded Yaw from the autopilot.
-static int32_t nav_yaw;
+static int32_t control_yaw;
 // Yaw will point at this location if yaw_mode is set to YAW_LOOK_AT_LOCATION
 static Vector3f yaw_look_at_WP;
 // bearing from current location to the yaw_look_at_WP
@@ -906,7 +891,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { update_copter_leds,   10,      55 },
 #endif
     { update_mount,          2,     450 },
-    { ten_hz_logging_loop,  10,     260 },
+    { ten_hz_logging_loop,  10,     300 },
     { fifty_hz_logging_loop, 2,     220 },
     { perf_update,        1000,     200 },
     { read_receiver_rssi,   10,      50 },
@@ -938,7 +923,7 @@ void setup() {
     AP_Param::setup_sketch_defaults();
 
     // initialise notify system
-    notify.init();
+    notify.init(true);
 
     // initialise battery monitor
     battery.init();
@@ -1166,8 +1151,11 @@ static void ten_hz_logging_loop()
         if (g.log_bitmask & MASK_LOG_ATTITUDE_MED) {
             Log_Write_Attitude();
         }
-        if (g.log_bitmask & MASK_LOG_MOTORS) {
-            Log_Write_Motors();
+        if (g.log_bitmask & MASK_LOG_RCIN) {
+            DataFlash.Log_Write_RCIN();
+        }
+        if (g.log_bitmask & MASK_LOG_RCOUT) {
+            DataFlash.Log_Write_RCOUT();
         }
     }
 }
@@ -1420,7 +1408,7 @@ bool set_yaw_mode(uint8_t new_yaw_mode)
             yaw_initialised = true;
             break;
         case YAW_RESETTOARMEDYAW:
-            nav_yaw = ahrs.yaw_sensor; // store current yaw so we can start rotating back to correct one
+            control_yaw = ahrs.yaw_sensor; // store current yaw so we can start rotating back to correct one
             yaw_initialised = true;
             break;
     }
@@ -1438,35 +1426,42 @@ bool set_yaw_mode(uint8_t new_yaw_mode)
 // 100hz update rate
 void update_yaw_mode(void)
 {
+    int16_t pilot_yaw = g.rc_4.control_in;
+
+    // do not process pilot's yaw input during radio failsafe
+    if (failsafe.radio) {
+        pilot_yaw = 0;
+    }
+
     switch(yaw_mode) {
 
     case YAW_HOLD:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }
-        // heading hold at heading held in nav_yaw but allow input from pilot
-        get_yaw_rate_stabilized_ef(g.rc_4.control_in);
+        // heading hold at heading held in control_yaw but allow input from pilot
+        get_yaw_rate_stabilized_ef(pilot_yaw);
         break;
 
     case YAW_ACRO:
         // pilot controlled yaw using rate controller
-        get_yaw_rate_stabilized_bf(g.rc_4.control_in);
+        get_yaw_rate_stabilized_bf(pilot_yaw);
         break;
 
     case YAW_LOOK_AT_NEXT_WP:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }else{
             // point towards next waypoint (no pilot input accepted)
             // we don't use wp_bearing because we don't want the copter to turn too much during flight
-            nav_yaw = get_yaw_slew(nav_yaw, original_wp_bearing, AUTO_YAW_SLEW_RATE);
+            control_yaw = get_yaw_slew(control_yaw, original_wp_bearing, AUTO_YAW_SLEW_RATE);
         }
-        get_stabilize_yaw(nav_yaw);
+        get_stabilize_yaw(control_yaw);
 
         // if there is any pilot input, switch to YAW_HOLD mode for the next iteration
-        if( g.rc_4.control_in != 0 ) {
+        if (pilot_yaw != 0) {
             set_yaw_mode(YAW_HOLD);
         }
         break;
@@ -1474,13 +1469,13 @@ void update_yaw_mode(void)
     case YAW_LOOK_AT_LOCATION:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }
         // point towards a location held in yaw_look_at_WP
         get_look_at_yaw();
 
         // if there is any pilot input, switch to YAW_HOLD mode for the next iteration
-        if( g.rc_4.control_in != 0 ) {
+        if (pilot_yaw != 0) {
             set_yaw_mode(YAW_HOLD);
         }
         break;
@@ -1488,13 +1483,13 @@ void update_yaw_mode(void)
     case YAW_CIRCLE:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }
         // points toward the center of the circle or does a panorama
         get_circle_yaw();
 
         // if there is any pilot input, switch to YAW_HOLD mode for the next iteration
-        if( g.rc_4.control_in != 0 ) {
+        if (pilot_yaw != 0) {
             set_yaw_mode(YAW_HOLD);
         }
         break;
@@ -1502,15 +1497,15 @@ void update_yaw_mode(void)
     case YAW_LOOK_AT_HOME:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }else{
             // keep heading always pointing at home with no pilot input allowed
-            nav_yaw = get_yaw_slew(nav_yaw, home_bearing, AUTO_YAW_SLEW_RATE);
+            control_yaw = get_yaw_slew(control_yaw, home_bearing, AUTO_YAW_SLEW_RATE);
         }
-        get_stabilize_yaw(nav_yaw);
+        get_stabilize_yaw(control_yaw);
 
         // if there is any pilot input, switch to YAW_HOLD mode for the next iteration
-        if( g.rc_4.control_in != 0 ) {
+        if (pilot_yaw != 0) {
             set_yaw_mode(YAW_HOLD);
         }
         break;
@@ -1518,27 +1513,27 @@ void update_yaw_mode(void)
     case YAW_LOOK_AT_HEADING:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }else{
             // keep heading pointing in the direction held in yaw_look_at_heading with no pilot input allowed
-            nav_yaw = get_yaw_slew(nav_yaw, yaw_look_at_heading, yaw_look_at_heading_slew);
+            control_yaw = get_yaw_slew(control_yaw, yaw_look_at_heading, yaw_look_at_heading_slew);
         }
-        get_stabilize_yaw(nav_yaw);
+        get_stabilize_yaw(control_yaw);
         break;
 
 	case YAW_LOOK_AHEAD:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }
 		// Commanded Yaw to automatically look ahead.
-        get_look_ahead_yaw(g.rc_4.control_in);
+        get_look_ahead_yaw(pilot_yaw);
         break;
 
     case YAW_DRIFT:
         // if we have landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }
         get_yaw_drift();
         break;
@@ -1546,15 +1541,15 @@ void update_yaw_mode(void)
     case YAW_RESETTOARMEDYAW:
         // if we are landed reset yaw target to current heading
         if (ap.land_complete) {
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
         }else{
             // changes yaw to be same as when quad was armed
-            nav_yaw = get_yaw_slew(nav_yaw, initial_armed_bearing, AUTO_YAW_SLEW_RATE);
+            control_yaw = get_yaw_slew(control_yaw, initial_armed_bearing, AUTO_YAW_SLEW_RATE);
         }
-        get_stabilize_yaw(nav_yaw);
+        get_stabilize_yaw(control_yaw);
 
         // if there is any pilot input, switch to YAW_HOLD mode for the next iteration
-        if( g.rc_4.control_in != 0 ) {
+        if (pilot_yaw != 0) {
             set_yaw_mode(YAW_HOLD);
         }
 
@@ -1700,14 +1695,10 @@ void update_roll_pitch_mode(void)
 
     case ROLL_PITCH_AUTO:
         // copy latest output from nav controller to stabilize controller
-        nav_roll = wp_nav.get_desired_roll();
-        nav_pitch = wp_nav.get_desired_pitch();
-        get_stabilize_roll(nav_roll);
-        get_stabilize_pitch(nav_pitch);
-
-        // user input, although ignored is put into control_roll and pitch for reporting purposes
-        control_roll = g.rc_1.control_in;
-        control_pitch = g.rc_2.control_in;
+        control_roll = wp_nav.get_desired_roll();
+        control_pitch = wp_nav.get_desired_pitch();
+        get_stabilize_roll(control_roll);
+        get_stabilize_pitch(control_pitch);
         break;
 
     case ROLL_PITCH_STABLE_OF:
@@ -1718,8 +1709,12 @@ void update_roll_pitch_mode(void)
         get_pilot_desired_lean_angles(g.rc_1.control_in, g.rc_2.control_in, control_roll, control_pitch);
 
         // mix in user control with optical flow
-        get_stabilize_roll(get_of_roll(control_roll));
-        get_stabilize_pitch(get_of_pitch(control_pitch));
+        control_roll = get_of_roll(control_roll);
+        control_pitch = get_of_pitch(control_pitch);
+
+        // call stabilize controller
+        get_stabilize_roll(control_roll);
+        get_stabilize_pitch(control_pitch);
         break;
 
     case ROLL_PITCH_DRIFT:
@@ -1730,19 +1725,15 @@ void update_roll_pitch_mode(void)
         // apply SIMPLE mode transform
         update_simple_mode();
 
-        // copy user input for reporting purposes
-        control_roll            = g.rc_1.control_in;
-        control_pitch           = g.rc_2.control_in;
-
         // update loiter target from user controls
-        wp_nav.move_loiter_target(control_roll, control_pitch,0.01f);
+        wp_nav.move_loiter_target(g.rc_1.control_in, g.rc_2.control_in, 0.01f);
 
         // copy latest output from nav controller to stabilize controller
-        nav_roll = wp_nav.get_desired_roll();
-        nav_pitch = wp_nav.get_desired_pitch();
+        control_roll = wp_nav.get_desired_roll();
+        control_pitch = wp_nav.get_desired_pitch();
 
-        get_stabilize_roll(nav_roll);
-        get_stabilize_pitch(nav_pitch);
+        get_stabilize_roll(control_roll);
+        get_stabilize_pitch(control_pitch);
         break;
 
     case ROLL_PITCH_SPORT:

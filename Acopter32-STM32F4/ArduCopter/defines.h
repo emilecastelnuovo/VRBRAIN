@@ -279,7 +279,6 @@ enum ap_message {
 #define LOG_CMD_MSG                     0x08
 #define LOG_CURRENT_MSG                 0x09
 #define LOG_STARTUP_MSG                 0x0A
-#define LOG_MOTORS_MSG                  0x0B
 #define LOG_OPTFLOW_MSG                 0x0C
 #define LOG_EVENT_MSG                   0x0D
 #define LOG_PID_MSG                     0x0E
@@ -307,11 +306,11 @@ enum ap_message {
 #define MASK_LOG_PM                     (1<<3)
 #define MASK_LOG_CTUN                   (1<<4)
 #define MASK_LOG_NTUN                   (1<<5)
-#define MASK_LOG_MODE                   (1<<6)  // not used
+#define MASK_LOG_RCIN                   (1<<6)
 #define MASK_LOG_IMU                    (1<<7)
 #define MASK_LOG_CMD                    (1<<8)
 #define MASK_LOG_CURRENT                (1<<9)
-#define MASK_LOG_MOTORS                 (1<<10)
+#define MASK_LOG_RCOUT                  (1<<10)
 #define MASK_LOG_OPTFLOW                (1<<11)
 #define MASK_LOG_PID                    (1<<12)
 #define MASK_LOG_COMPASS                (1<<13)
@@ -355,56 +354,6 @@ enum ap_message {
 #define DATA_ACRO_TRAINER_DISABLED      43
 #define DATA_ACRO_TRAINER_LEVELING      44
 #define DATA_ACRO_TRAINER_LIMITED       45
-
-
-
-/* ************************************************************** */
-/* Expansion PIN's that people can use for various things. */
-
-// AN0 - 7 are located at edge of IMU PCB "above" pressure sensor and
-// Expansion port
-// AN0 - 5 are also located next to voltage dividers and sliding SW2 switch
-// AN0 - 3 has 10kOhm resistor in serial, include 3.9kOhm to make it as
-// voltage divider
-// AN4 - 5 are direct GPIO pins from atmega1280 and they are the latest pins
-// next to SW2 switch
-// Look more ArduCopter Wiki for voltage dividers and other ports
-#define AN0  54  // resistor, vdiv use, divider 1 closest to relay
-#define AN1  55  // resistor, vdiv use, divider 2
-#define AN2  56  // resistor, vdiv use, divider 3
-#define AN3  57  // resistor, vdiv use, divider 4 closest to SW2
-#define AN4  58  // direct GPIO pin, default as analog input, next to SW2
-                 // switch
-#define AN5  59  // direct GPIO pin, default as analog input, next to SW2
-                 // switch
-#define AN6  60  // direct GPIO pin, default as analog input, close to
-                 // Pressure sensor, Expansion Ports
-#define AN7  61  // direct GPIO pin, default as analog input, close to
-                 // Pressure sensor, Expansion Ports
-
-// AN8 - 15 are located at edge of IMU PCB "above" pressure sensor and
-// Expansion port
-// AN8 - 15 PINs are not connected anywhere, they are located as last 8 pins
-// on edge of the board above Expansion Ports
-// even pins (8,10,12,14) are at edge of board, Odd pins (9,11,13,15) are on
-// inner row
-#define AN8  62  // NC
-#define AN9  63  // NC
-#define AN10  64 // NC
-#define AN11  65 // NC
-#define AN12  66 // NC
-#define AN13  67 // NC
-#define AN14  68 // NC
-#define AN15  69 // NC
-
-#define RELAY_APM1_PIN 47
-#define RELAY_APM2_PIN 13
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-#define PIEZO_PIN 68           //Last pin on the back ADC connector
-#else
-#define PIEZO_PIN AN5           //Last pin on the back ADC connector
-#endif
 
 // RADIANS
 #define RADX100 0.000174532925f

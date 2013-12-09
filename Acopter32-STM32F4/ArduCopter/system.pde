@@ -122,10 +122,6 @@ static void init_ardupilot()
 
     relay.init();
 
-#if COPTER_LEDS == ENABLED
-    copter_leds_init();
-#endif
-
     // load parameters from EEPROM
     load_parameters();
 
@@ -471,7 +467,7 @@ static bool set_mode(uint8_t mode)
             // reset acro angle targets to current attitude
             acro_roll = ahrs.roll_sensor;
             acro_pitch = ahrs.pitch_sensor;
-            nav_yaw = ahrs.yaw_sensor;
+            control_yaw = ahrs.yaw_sensor;
             break;
 
         default:
