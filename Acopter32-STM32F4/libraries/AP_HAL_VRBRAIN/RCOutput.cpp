@@ -1,5 +1,6 @@
 
 #include "RCOutput.h"
+#include <boards.h>
 
 extern const AP_HAL::HAL& hal;
 using namespace VRBRAIN;
@@ -30,18 +31,18 @@ void VRBRAINRCOutput::InitDefaultPWM(void)
 
 }
 
-void VRBRAINRCOutput::init(void* is_ppm)
+void VRBRAINRCOutput::init(void* ext_mag)
 {
-    uint8_t is_ppmsum = *((uint8_t*)is_ppm);
+    uint8_t _ext_mag = *((uint8_t*)ext_mag);
 
     InitDefaultPWM();
 
-    InitPWM();
+    InitPWM(_ext_mag);
 
 }
 
 
-void VRBRAINRCOutput::InitPWM()
+void VRBRAINRCOutput::InitPWM(uint8_t ext_mag)
 {
   analogOutPin[MOTORID1] = output_channel_ch1;
   analogOutPin[MOTORID2] = output_channel_ch2;
@@ -52,10 +53,20 @@ void VRBRAINRCOutput::InitPWM()
   analogOutPin[MOTORID7] = output_channel_ch7;
   analogOutPin[MOTORID8] = output_channel_ch8;
 
-  for(int8_t i = MOTORID1; i <= MOTORID8; i++)
+  uint8_t num_motors = 7;
+
+if (ext_mag){
+  timer_disable(TIMER4);
+  num_motors = 5;
+} else {
+  timerDefaultConfig(TIMER4);
+}
+
+  for(int8_t i = MOTORID1; i <= num_motors; i++)
       {
       hal.gpio->pinMode(analogOutPin[i],PWM);
       }
+
 }
 
 #define _BV(bit) (1 << (bit))

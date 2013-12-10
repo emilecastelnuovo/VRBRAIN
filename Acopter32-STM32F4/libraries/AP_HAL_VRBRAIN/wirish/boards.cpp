@@ -129,7 +129,6 @@ static void setupADC() {
     adc_foreach(adcDefaultConfig);
 }
 
-static void timerDefaultConfig(timer_dev*);
 
 static void setupTimers() {
     timer_foreach(timerDefaultConfig);
@@ -138,7 +137,7 @@ static void setupTimers() {
 //static void adcDefaultConfig(const adc_dev *dev) {
 //}
 
-static void timerDefaultConfig(timer_dev *dev) {
+void timerDefaultConfig(timer_dev *dev) {
 
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	

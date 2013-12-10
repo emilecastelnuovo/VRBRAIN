@@ -70,12 +70,21 @@ static int16_t read_sonar(void)
 
 static void init_compass()
 {
-    if (!compass.init() || !compass.read()) {
+
+    if (compass_ext.init() && compass_ext.read()){
+	cliSerial->println_P(PSTR("External Compass Detected!"));
+	compass = compass_ext;
+    } else if(compass_int.init() && compass_int.read())  {
+	compass = compass_int;
+	cliSerial->println_P(PSTR("Internal Compass Detected!"));
+	//compass = compass_int;
+    }else{
         // make sure we don't pass a broken compass to DCM
         cliSerial->println_P(PSTR("COMPASS INIT ERROR"));
         Log_Write_Error(ERROR_SUBSYSTEM_COMPASS,ERROR_CODE_FAILED_TO_INITIALISE);
         return;
     }
+
     ahrs.set_compass(&compass);
 #if SECONDARY_DMP_ENABLED == ENABLED
     ahrs2.set_compass(&compass);

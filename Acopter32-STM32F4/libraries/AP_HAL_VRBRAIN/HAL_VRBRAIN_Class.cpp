@@ -12,6 +12,7 @@
 #include <pwm_in.h>
 #include <usart.h>
 #include <i2c.h>
+#include <AP_Compass.h>
 
 using namespace VRBRAIN;
 
@@ -59,6 +60,26 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
 	  )
 {}
 
+extern const AP_HAL::HAL& hal;
+
+/*Returns true if an external mag on I2C2 port has been detected*/
+static uint8_t detect_compass(void){
+
+    AP_Compass_HMC5843_EXT compass_ext;
+    AP_Compass_HMC5843 compass;
+
+    hal.scheduler->delay(10);
+
+    if(compass_ext.init()){
+	hal.console->printf_P(PSTR("External Compass found!"));
+	return 1;
+    }
+    if(compass.init()){
+	hal.console->printf_P(PSTR("Internal Compass found!"));
+	return 0;
+    }
+
+}
 void HAL_VRBRAIN::init(int argc,char* const argv[]) const
 {
   /* initialize all drivers and private members here.
@@ -75,11 +96,15 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
   //_member->init();
   i2c->begin();
   i2c2->begin();
+
   spi->init(NULL);
+
+  uint8_t ext_mag = detect_compass();
+
   analogin->init(NULL);
   storage->init(NULL);
   rcin->init(NULL);
-  rcout->init((void *)&_is_ppmsum);
+  rcout->init((void *)&ext_mag);
 
 }
 
