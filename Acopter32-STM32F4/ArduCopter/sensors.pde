@@ -73,9 +73,9 @@ static void init_compass()
 
     if (compass_ext.init() && compass_ext.read()){
 	cliSerial->println_P(PSTR("External Compass Detected!"));
-	compass = compass_ext;
+	compass = &compass_ext;
     } else if(compass_int.init() && compass_int.read())  {
-	compass = compass_int;
+	compass = &compass_int;
 	cliSerial->println_P(PSTR("Internal Compass Detected!"));
 	//compass = compass_int;
     }else{
@@ -85,9 +85,9 @@ static void init_compass()
         return;
     }
 
-    ahrs.set_compass(&compass);
+    ahrs.set_compass(compass);
 #if SECONDARY_DMP_ENABLED == ENABLED
-    ahrs2.set_compass(&compass);
+    ahrs2.set_compass(compass);
 #endif
 }
 
@@ -121,7 +121,7 @@ static void read_battery(void)
 
     // update compass with current value
     if (battery.monitoring() == AP_BATT_MONITOR_VOLTAGE_AND_CURRENT) {
-        compass.set_current(battery.current_amps());
+        compass->set_current(battery.current_amps());
     }
 
     // check for low voltage or current if the low voltage check hasn't already been triggered

@@ -182,7 +182,7 @@ static NOINLINE void send_extended_status1(mavlink_channel_t chan, uint16_t pack
 
     // default to all healthy except compass, gps and receiver which we set individually
     control_sensors_health = control_sensors_present & (~MAV_SYS_STATUS_SENSOR_3D_MAG & ~MAV_SYS_STATUS_SENSOR_GPS & ~MAV_SYS_STATUS_SENSOR_RC_RECEIVER);
-    if (g.compass_enabled && compass.healthy && ahrs.use_compass()) {
+    if (g.compass_enabled && compass->healthy && ahrs.use_compass()) {
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_3D_MAG;
     }
     if (g_gps != NULL && g_gps->status() > GPS::NO_GPS && !gps_glitch.glitching()) {
@@ -461,9 +461,9 @@ static void NOINLINE send_raw_imu1(mavlink_channel_t chan)
         gyro.x * 1000.0f,
         gyro.y * 1000.0f,
         gyro.z * 1000.0f,
-        compass.mag_x,
-        compass.mag_y,
-        compass.mag_z);
+        compass->mag_x,
+        compass->mag_y,
+        compass->mag_z);
 }
 
 static void NOINLINE send_raw_imu2(mavlink_channel_t chan)
@@ -478,7 +478,7 @@ static void NOINLINE send_raw_imu2(mavlink_channel_t chan)
 
 static void NOINLINE send_raw_imu3(mavlink_channel_t chan)
 {
-    const Vector3f &mag_offsets = compass.get_offsets();
+    const Vector3f &mag_offsets = compass->get_offsets();
     const Vector3f &accel_offsets = ins.get_accel_offsets();
     const Vector3f &gyro_offsets = ins.get_gyro_offsets();
 
@@ -486,7 +486,7 @@ static void NOINLINE send_raw_imu3(mavlink_channel_t chan)
                                     mag_offsets.x,
                                     mag_offsets.y,
                                     mag_offsets.z,
-                                    compass.get_declination(),
+                                    compass->get_declination(),
                                     barometer.get_pressure(),
                                     barometer.get_temperature()*100,
                                     gyro_offsets.x,
@@ -1590,7 +1590,7 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         mavlink_set_mag_offsets_t packet;
         mavlink_msg_set_mag_offsets_decode(msg, &packet);
         if (mavlink_check_target(packet.target_system,packet.target_component)) break;
-        compass.set_offsets(Vector3f(packet.mag_ofs_x, packet.mag_ofs_y, packet.mag_ofs_z));
+        compass->set_offsets(Vector3f(packet.mag_ofs_x, packet.mag_ofs_y, packet.mag_ofs_z));
         break;
     }
 #endif
@@ -1927,7 +1927,7 @@ mission_failed:
         ins.set_accel(accels);
 
         barometer.setHIL(packet.alt*0.001f);
-        compass.setHIL(packet.roll, packet.pitch, packet.yaw);
+        compass->setHIL(packet.roll, packet.pitch, packet.yaw);
 
  #if HIL_MODE == HIL_MODE_ATTITUDE
         // set AHRS hil sensor

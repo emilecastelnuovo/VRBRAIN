@@ -278,7 +278,7 @@ static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::i2c);
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 static AP_Compass_HMC5843_EXT compass_ext;
 static AP_Compass_HMC5843 compass_int;
-static Compass &compass = compass_int;
+static Compass * compass;
 #elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
 static AP_Compass_PX4 compass;
  #else
@@ -957,7 +957,7 @@ void setup() {
 static void compass_accumulate(void)
 {
     if (g.compass_enabled) {
-        compass.accumulate();
+        compass->accumulate();
     }
 }
 
@@ -1129,8 +1129,8 @@ static void update_batt_compass(void)
 
 #if HIL_MODE != HIL_MODE_ATTITUDE  // don't execute in HIL mode
     if(g.compass_enabled) {
-        if (compass.read()) {
-            compass.null_offsets();
+        if (compass->read()) {
+            compass->null_offsets();
         }
         // log compass information
         if (motors.armed() && (g.log_bitmask & MASK_LOG_COMPASS)) {
@@ -1331,7 +1331,7 @@ static void update_GPS(void)
 
                     if (g.compass_enabled) {
                         // Set compass declination automatically
-                        compass.set_initial_location(g_gps->latitude, g_gps->longitude);
+                        compass->set_initial_location(g_gps->latitude, g_gps->longitude);
                     }
                 }
             }else{
@@ -2293,7 +2293,7 @@ static void tuning(){
 
     case CH6_DECLINATION:
         // set declination to +-20degrees
-        compass.set_declination(ToRad((2.0f * g.rc_6.control_in - g.radio_tuning_high)/100.0f), false);     // 2nd parameter is false because we do not want to save to eeprom because this would have a performance impact
+        compass->set_declination(ToRad((2.0f * g.rc_6.control_in - g.radio_tuning_high)/100.0f), false);     // 2nd parameter is false because we do not want to save to eeprom because this would have a performance impact
         break;
 
     case CH6_CIRCLE_RATE:
