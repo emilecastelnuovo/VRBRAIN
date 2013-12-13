@@ -177,9 +177,6 @@ static void init_arm_motors()
 
     // go back to normal AHRS gains
     ahrs.set_fast_gains(false);
-#if SECONDARY_DMP_ENABLED == ENABLED
-    ahrs2.set_fast_gains(false);
-#endif
 
     // enable gps velocity based centrefugal force compensation
     ahrs.set_correct_centrifugal(true);
@@ -251,7 +248,7 @@ static void pre_arm_checks(bool display_failure)
     // check Compass
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_COMPASS)) {
         // check the compass is healthy
-        if(!compass->healthy) {
+        if(!compass.healthy()) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Compass not healthy"));
             }
@@ -259,8 +256,8 @@ static void pre_arm_checks(bool display_failure)
         }
 
         // check compass learning is on or offsets have been set
-        Vector3f offsets = compass->get_offsets();
-        if(!compass->_learn && offsets.length() == 0) {
+        Vector3f offsets = compass.get_offsets();
+        if(!compass._learn && offsets.length() == 0) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Compass not calibrated"));
             }
@@ -276,7 +273,7 @@ static void pre_arm_checks(bool display_failure)
         }
 
         // check for unreasonable mag field length
-        float mag_field = pythagorous3(compass->mag_x, compass->mag_y, compass->mag_z);
+        float mag_field = compass.get_field().length();
         if (mag_field > COMPASS_MAGFIELD_EXPECTED*1.65 || mag_field < COMPASS_MAGFIELD_EXPECTED*0.35) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Check mag field"));
@@ -481,7 +478,7 @@ static void init_disarm_motors()
     // disable inertial nav errors temporarily
     inertial_nav.ignore_next_error();
 
-    compass->save_offsets();
+    compass.save_offsets();
 
     g.throttle_cruise.save();
 

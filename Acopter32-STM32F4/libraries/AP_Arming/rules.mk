@@ -5,13 +5,13 @@ d := $(dir)
 BUILDDIRS += $(BUILD_PATH)/$(d)
 
 # Local flags
-CFLAGS_$(d) := -fno-strict-aliasing -Wall -Werror
+CFLAGS_$(d) := -Wall
 
 # Local rules and targets
 cSRCS_$(d) :=
 
 cppSRCS_$(d) :=
-cppSRCS_$(d) += AP_LeadFilter.cpp
+cppSRCS_$(d) += AP_Arming.cpp
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)

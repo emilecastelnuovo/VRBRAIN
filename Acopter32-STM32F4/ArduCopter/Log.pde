@@ -353,13 +353,14 @@ struct PACKED log_Compass {
 // Write a Compass packet
 static void Log_Write_Compass()
 {
-    Vector3f mag_offsets = compass->get_offsets();
-    Vector3f mag_motor_offsets = compass->get_motor_offsets();
+    const Vector3f &mag_offsets = compass.get_offsets(0);
+    const Vector3f &mag_motor_offsets = compass.get_motor_offsets(0);
+    const Vector3f &mag = compass.get_field(0);
     struct log_Compass pkt = {
         LOG_PACKET_HEADER_INIT(LOG_COMPASS_MSG),
-        mag_x           : compass->mag_x,
-        mag_y           : compass->mag_y,
-        mag_z           : compass->mag_z,
+        mag_x           : (int16_t)mag.x,
+        mag_y           : (int16_t)mag.y,
+        mag_z           : (int16_t)mag.z,
         offset_x        : (int16_t)mag_offsets.x,
         offset_y        : (int16_t)mag_offsets.y,
         offset_z        : (int16_t)mag_offsets.z,
@@ -368,6 +369,26 @@ static void Log_Write_Compass()
         motor_offset_z  : (int16_t)mag_motor_offsets.z
     };
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
+#if COMPASS_MAX_INSTANCES > 1
+    if (compass.get_count() > 1) {
+        const Vector3f &mag2_offsets = compass.get_offsets(1);
+        const Vector3f &mag2_motor_offsets = compass.get_motor_offsets(1);
+        const Vector3f &mag2 = compass.get_field(1);
+        struct log_Compass pkt2 = {
+            LOG_PACKET_HEADER_INIT(LOG_COMPASS2_MSG),
+            mag_x           : (int16_t)mag2.x,
+            mag_y           : (int16_t)mag2.y,
+            mag_z           : (int16_t)mag2.z,
+            offset_x        : (int16_t)mag2_offsets.x,
+            offset_y        : (int16_t)mag2_offsets.y,
+            offset_z        : (int16_t)mag2_offsets.z,
+            motor_offset_x  : (int16_t)mag2_motor_offsets.x,
+            motor_offset_y  : (int16_t)mag2_motor_offsets.y,
+            motor_offset_z  : (int16_t)mag2_motor_offsets.z
+        };
+        DataFlash.WriteBlock(&pkt2, sizeof(pkt2));
+    }
+#endif
 }
 
 struct PACKED log_Performance {
@@ -683,34 +704,6 @@ static void Log_Write_PID(uint8_t pid_id, int32_t error, int32_t p, int32_t i, i
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
-
-struct PACKED log_DMP {
-    LOG_PACKET_HEADER;
-    int16_t  dcm_roll;
-    int16_t  dmp_roll;
-    int16_t  dcm_pitch;
-    int16_t  dmp_pitch;
-    uint16_t dcm_yaw;
-    uint16_t dmp_yaw;
-};
-
-#if SECONDARY_DMP_ENABLED == ENABLED
-// Write a DMP attitude packet
-void Log_Write_DMP()
-{
-    struct log_DMP pkt = {
-        LOG_PACKET_HEADER_INIT(LOG_DMP_MSG),
-        dcm_roll    : (int16_t)ahrs.roll_sensor,
-        dmp_roll    : (int16_t)ahrs2.roll_sensor,
-        dcm_pitch   : (int16_t)ahrs.pitch_sensor,
-        dmp_pitch   : (int16_t)ahrs2.pitch_sensor,
-        dcm_yaw     : (uint16_t)ahrs.yaw_sensor,
-        dmp_yaw     : (uint16_t)ahrs2.yaw_sensor
-    };
-    DataFlash.WriteBlock(&pkt, sizeof(pkt));
-}
-#endif
-
 struct PACKED log_Camera {
     LOG_PACKET_HEADER;
     uint32_t gps_time;
@@ -777,6 +770,8 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "CTUN", "hcefchhhh",   "ThrIn,SonAlt,BarAlt,WPAlt,DesSonAlt,AngBst,CRate,ThrOut,DCRate" },
     { LOG_COMPASS_MSG, sizeof(log_Compass),             
       "MAG", "hhhhhhhhh",    "MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ" },
+    { LOG_COMPASS2_MSG, sizeof(log_Compass),             
+      "MAG2", "hhhhhhhhh",    "MagX,MagY,MagZ,OfsX,OfsY,OfsZ,MOfsX,MOfsY,MOfsZ" },
     { LOG_PERFORMANCE_MSG, sizeof(log_Performance), 
       "PM",  "BBHHIhBHB",    "RenCnt,RenBlw,NLon,NLoop,MaxT,PMT,I2CErr,INSErr,INAVErr" },
     { LOG_CMD_MSG, sizeof(log_Cmd),                 
@@ -807,8 +802,6 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "DFLT",  "Bf",         "Id,Value" },
     { LOG_PID_MSG, sizeof(log_PID),         
       "PID",   "Biiiiif",    "Id,Error,P,I,D,Out,Gain" },
-    { LOG_DMP_MSG, sizeof(log_DMP),         
-      "DMP",   "ccccCC",     "DCMRoll,DMPRoll,DCMPtch,DMPPtch,DCMYaw,DMPYaw" },
     { LOG_CAMERA_MSG, sizeof(log_Camera),                 
       "CAM",   "IHLLeccC",   "GPSTime,GPSWeek,Lat,Lng,Alt,Roll,Pitch,Yaw" },
     { LOG_ERROR_MSG, sizeof(log_Error),         
@@ -883,9 +876,6 @@ static void Log_Write_Nav_Tuning() {}
 static void Log_Write_Control_Tuning() {}
 static void Log_Write_Performance() {}
 static void Log_Write_PID(uint8_t pid_id, int32_t error, int32_t p, int32_t i, int32_t d, int32_t output, float gain) {}
-#if SECONDARY_DMP_ENABLED == ENABLED
-void Log_Write_DMP() {}
-#endif
 static void Log_Write_Camera() {}
 static void Log_Write_Error(uint8_t sub_system, uint8_t error_code) {}
 static int8_t process_logs(uint8_t argc, const Menu::arg *argv) {

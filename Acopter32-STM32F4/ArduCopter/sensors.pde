@@ -70,7 +70,7 @@ static int16_t read_sonar(void)
 
 static void init_compass()
 {
-
+/*
     if (compass_ext.init() && compass_ext.read()){
 	cliSerial->println_P(PSTR("External Compass Detected!"));
 	compass = &compass_ext;
@@ -79,16 +79,14 @@ static void init_compass()
 	cliSerial->println_P(PSTR("Internal Compass Detected!"));
 	//compass = compass_int;
     }else{
+    */
+    if (!compass.init() || !compass.read()) {
         // make sure we don't pass a broken compass to DCM
         cliSerial->println_P(PSTR("COMPASS INIT ERROR"));
         Log_Write_Error(ERROR_SUBSYSTEM_COMPASS,ERROR_CODE_FAILED_TO_INITIALISE);
         return;
     }
-
-    ahrs.set_compass(compass);
-#if SECONDARY_DMP_ENABLED == ENABLED
-    ahrs2.set_compass(compass);
-#endif
+    ahrs.set_compass(&compass);
 }
 
 static void init_optflow()
@@ -121,7 +119,7 @@ static void read_battery(void)
 
     // update compass with current value
     if (battery.monitoring() == AP_BATT_MONITOR_VOLTAGE_AND_CURRENT) {
-        compass->set_current(battery.current_amps());
+        compass.set_current(battery.current_amps());
     }
 
     // check for low voltage or current if the low voltage check hasn't already been triggered

@@ -286,12 +286,6 @@ static void startup_ground(bool force_gyro_cal)
     // setup fast AHRS gains to get right attitude
     ahrs.set_fast_gains(true);
 
-#if SECONDARY_DMP_ENABLED == ENABLED
-    ahrs2.init(&timer_scheduler);
-    ahrs2.set_as_secondary(true);
-    ahrs2.set_fast_gains(true);
-#endif
-
     // set landed flag
     set_land_complete(true);
 }

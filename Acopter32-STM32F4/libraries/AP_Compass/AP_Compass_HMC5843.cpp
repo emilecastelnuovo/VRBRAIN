@@ -65,7 +65,7 @@ extern const AP_HAL::HAL& hal;
 bool AP_Compass_HMC5843::read_register(uint8_t address, uint8_t *value)
 {
     if (hal.i2c->readRegister((uint8_t)COMPASS_ADDRESS, address, value) != 0) {
-        healthy = false;
+        _healthy[0] = false;
         return false;
     }
     return true;
@@ -75,7 +75,7 @@ bool AP_Compass_HMC5843::read_register(uint8_t address, uint8_t *value)
 bool AP_Compass_HMC5843::write_register(uint8_t address, uint8_t value)
 {
     if (hal.i2c->writeRegister((uint8_t)COMPASS_ADDRESS, address, value) != 0) {
-        healthy = false;
+        _healthy[0] = false;
         return false;
     }
     return true;
@@ -87,10 +87,10 @@ bool AP_Compass_HMC5843::read_raw()
     uint8_t buff[6];
 
     if (hal.i2c->readRegisters(COMPASS_ADDRESS, 0x03, 6, buff) != 0) {
-        if (healthy) {
+        if (_healthy[0]) {
 			hal.i2c->setHighSpeed(false);
         }
-        healthy = false;
+        _healthy[0] = false;
         _i2c_sem->give();
         return false;
     }
@@ -127,7 +127,7 @@ void AP_Compass_HMC5843::accumulate(void)
         return;
     }
    uint32_t tnow = hal.scheduler->micros();
-   if (healthy && _accum_count != 0 && (tnow - _last_accum_time) < 13333) {
+   if (_healthy[0] && _accum_count != 0 && (tnow - _last_accum_time) < 13333) {
 	  // the compass gets new data at 75Hz
 	  return;
    }
@@ -195,7 +195,7 @@ AP_Compass_HMC5843::init()
     _base_config = 0;
     if (!write_register(ConfigRegA, SampleAveraging_8<<5 | DataOutputRate_75HZ<<2 | NormalOperation) ||
         !read_register(ConfigRegA, &_base_config)) {
-        healthy = false;
+        _healthy[0] = false;
         _i2c_sem->give();
         return false;
     }
@@ -286,7 +286,7 @@ AP_Compass_HMC5843::init()
     _initialised = true;
 
 	// perform an initial read
-	healthy = true;
+	_healthy[0] = true;
 	read();
 
     return success;
@@ -301,7 +301,7 @@ bool AP_Compass_HMC5843::read()
         // have the right orientation!)
         return false;
     }
-    if (!healthy) {
+    if (!_healthy[0]) {
         if (hal.scheduler->millis() < _retry_time) {
             return false;
         }
@@ -314,7 +314,7 @@ bool AP_Compass_HMC5843::read()
 
 	if (_accum_count == 0) {
 	   accumulate();
-	   if (!healthy || _accum_count == 0) {
+	   if (!_healthy[0] || _accum_count == 0) {
 		  // try again in 1 second, and set I2c clock speed slower
 		  _retry_time = hal.scheduler->millis() + 1000;
 		  hal.i2c->setHighSpeed(false);
@@ -322,48 +322,42 @@ bool AP_Compass_HMC5843::read()
 	   }
 	}
 
-	mag_x = _mag_x_accum * calibration[0] / _accum_count;
-	mag_y = _mag_y_accum * calibration[1] / _accum_count;
-	mag_z = _mag_z_accum * calibration[2] / _accum_count;
+	_field[0].x = _mag_x_accum * calibration[0] / _accum_count;
+	_field[0].y = _mag_y_accum * calibration[1] / _accum_count;
+	_field[0].z = _mag_z_accum * calibration[2] / _accum_count;
 	_accum_count = 0;
 	_mag_x_accum = _mag_y_accum = _mag_z_accum = 0;
 
     last_update = hal.scheduler->micros(); // record time of update
 
     // rotate to the desired orientation
-    Vector3f rot_mag = Vector3f(mag_x,mag_y,mag_z);
     if (product_id == AP_COMPASS_TYPE_HMC5883L) {
-        rot_mag.rotate(ROTATION_YAW_90);
+        _field[0].rotate(ROTATION_YAW_90);
     }
 
     // apply default board orientation for this compass type. This is
     // a noop on most boards
-    rot_mag.rotate(MAG_BOARD_ORIENTATION);
+    _field[0].rotate(MAG_BOARD_ORIENTATION);
 
     // add user selectable orientation
-    rot_mag.rotate((enum Rotation)_orientation.get());
+    _field[0].rotate((enum Rotation)_orientation.get());
 
     if (!_external) {
         // and add in AHRS_ORIENTATION setting if not an external compass
-        rot_mag.rotate(_board_orientation);
+        _field[0].rotate(_board_orientation);
     }
 
-    rot_mag += _offset.get();
+    _field[0] += _offset[0].get();
 
     // apply motor compensation
     if(_motor_comp_type != AP_COMPASS_MOT_COMP_DISABLED && _thr_or_curr != 0.0f) {
-        _motor_offset = _motor_compensation.get() * _thr_or_curr;
-        rot_mag += _motor_offset;
+        _motor_offset[0] = _motor_compensation[0].get() * _thr_or_curr;
+        _field[0] += _motor_offset[0];
     }else{
-        _motor_offset.x = 0;
-        _motor_offset.y = 0;
-        _motor_offset.z = 0;
+        _motor_offset[0].zero();
     }
 
-    mag_x = rot_mag.x;
-    mag_y = rot_mag.y;
-    mag_z = rot_mag.z;
-    healthy = true;
+    _healthy[0] = true;
 
     return true;
 }

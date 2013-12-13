@@ -15,7 +15,7 @@
 
 // Flight modes
 // ------------
-#define YAW_HOLD                        0       // heading hold at heading in nav_yaw but allow input from pilot
+#define YAW_HOLD                        0       // heading hold at heading in control_yaw but allow input from pilot
 #define YAW_ACRO                        1       // pilot controlled yaw using rate controller
 #define YAW_LOOK_AT_NEXT_WP             2       // point towards next waypoint (no pilot input accepted)
 #define YAW_LOOK_AT_LOCATION            3       // point towards a location held in yaw_look_at_WP (no pilot input accepted)
@@ -283,7 +283,6 @@ enum ap_message {
 #define LOG_EVENT_MSG                   0x0D
 #define LOG_PID_MSG                     0x0E
 #define LOG_COMPASS_MSG                 0x0F
-#define LOG_DMP_MSG                     0x10
 #define LOG_INAV_MSG                    0x11
 #define LOG_CAMERA_MSG                  0x12
 #define LOG_ERROR_MSG                   0x13
@@ -294,8 +293,9 @@ enum ap_message {
 #define LOG_DATA_FLOAT_MSG              0x18
 #define LOG_AUTOTUNE_MSG                0x19
 #define LOG_AUTOTUNEDETAILS_MSG         0x1A
+#define LOG_COMPASS2_MSG                0x1B
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
- # define LOG_DATA_INT8_MSG              	0x1B
+ # define LOG_DATA_INT8_MSG              	0x1C
 #endif
 #define LOG_INDEX_MSG                   0xF0
 #define MAX_NUM_LOGS                    50

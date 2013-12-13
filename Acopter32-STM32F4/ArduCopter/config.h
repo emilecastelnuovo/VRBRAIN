@@ -1004,11 +1004,6 @@
   #  define CLI_ENABLED           ENABLED
 #endif
 
-
-// experimental mpu6000 DMP code
-#ifndef SECONDARY_DMP_ENABLED
- # define SECONDARY_DMP_ENABLED DISABLED
-#endif
 /*
   build a firmware version string.
   GIT_VERSION comes from Makefile builds

@@ -151,7 +151,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: MAG_ENABLE
     // @DisplayName: Compass enable/disable
-    // @Description: Setting this to Enabled(1) will enable the compass-> Setting this to Disabled(0) will disable the compass
+    // @Description: Setting this to Enabled(1) will enable the compass. Setting this to Disabled(0) will disable the compass
     // @Values: 0:Disabled,1:Enabled
     // @User: Standard
     GSCALAR(compass_enabled,        "MAG_ENABLE",   MAGNETOMETER),
@@ -1137,19 +1137,10 @@ static void load_parameters(void)
         ahrs._kp_yaw.set_and_save(0.1);
     }
 
-#if SECONDARY_DMP_ENABLED == ENABLED
-    if (!ahrs2._kp.load()) {
-        ahrs2._kp.set(0.1);
-    }
-    if (!ahrs2._kp_yaw.load()) {
-        ahrs2._kp_yaw.set(0.1);
-    }
-#endif
-
     // setup different Compass learn setting for ArduCopter than the default
     // but allow users to override in their config
-    if (!compass->_learn.load()) {
-        compass->_learn.set_and_save(0);
+    if (!compass._learn.load()) {
+        compass._learn.set_and_save(0);
     }
 
     if (!g.format_version.load() ||

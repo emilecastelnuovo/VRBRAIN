@@ -98,14 +98,14 @@ test_compass(uint8_t argc, const Menu::arg *argv)
         return (0);
     }
 
-    if (!compass->init()) {
+    if (!compass.init()) {
         cliSerial->println_P(PSTR("Compass initialisation failed!"));
         return 0;
     }
 
     ahrs.init();
     ahrs.set_fly_forward(true);
-    ahrs.set_compass(compass);
+    ahrs.set_compass(&compass);
     report_compass();
 
     // we need the AHRS initialised for this test
@@ -130,27 +130,28 @@ test_compass(uint8_t argc, const Menu::arg *argv)
 
             medium_loopCounter++;
             if(medium_loopCounter == 5) {
-                if (compass->read()) {
+                if (compass.read()) {
                     // Calculate heading
                     const Matrix3f &m = ahrs.get_dcm_matrix();
-                    heading = compass->calculate_heading(m);
-                    compass->null_offsets();
+                    heading = compass.calculate_heading(m);
+                    compass.null_offsets();
                 }
                 medium_loopCounter = 0;
             }
 
             counter++;
             if (counter>20) {
-                if (compass->healthy) {
-                    Vector3f maggy = compass->get_offsets();
-                    cliSerial->printf_P(PSTR("Heading: %ld, XYZ: %d, %d, %d,\tXYZoff: %6.2f, %6.2f, %6.2f\n"),
-                                    (wrap_360_cd(ToDeg(heading) * 100)) /100,
-                                    (int)compass->mag_x,
-                                    (int)compass->mag_y,
-                                    (int)compass->mag_z,
-                                    maggy.x,
-                                    maggy.y,
-                                    maggy.z);
+                if (compass.healthy()) {
+                    const Vector3f &mag_ofs = compass.get_offsets();
+                    const Vector3f &mag = compass.get_field();
+                    cliSerial->printf_P(PSTR("Heading: %ld, XYZ: %.0f, %.0f, %.0f,\tXYZoff: %6.2f, %6.2f, %6.2f\n"),
+                                        (wrap_360_cd(ToDeg(heading) * 100)) /100,
+                                        mag.x,
+                                        mag.y,
+                                        mag.z,
+                                        mag_ofs.x,
+                                        mag_ofs.y,
+                                        mag_ofs.z);
                 } else {
                     cliSerial->println_P(PSTR("compass not healthy"));
                 }
@@ -165,7 +166,7 @@ test_compass(uint8_t argc, const Menu::arg *argv)
     // save offsets. This allows you to get sane offset values using
     // the CLI before you go flying.
     cliSerial->println_P(PSTR("saving offsets"));
-    compass->save_offsets();
+    compass.save_offsets();
     return (0);
 }
 
