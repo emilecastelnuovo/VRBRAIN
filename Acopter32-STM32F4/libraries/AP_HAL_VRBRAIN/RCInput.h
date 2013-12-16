@@ -34,7 +34,6 @@ private:
     unsigned int input_channel_ch7;
     unsigned int input_channel_ch8;
 
-    unsigned char _iboard;
     static volatile uint8_t  _valid;
 
     /* override state */

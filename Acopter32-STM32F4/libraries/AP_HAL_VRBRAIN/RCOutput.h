@@ -22,7 +22,7 @@
 #define MOTORID12 11
 
 class VRBRAIN::VRBRAINRCOutput : public AP_HAL::RCOutput {
-    void     init(void* ext_mag);
+    void     init(void* implspecific);
     void     set_freq(uint32_t chmask, uint16_t freq_hz);
     uint16_t get_freq(uint8_t ch);
     void     enable_ch(uint8_t ch);
@@ -34,9 +34,8 @@ class VRBRAIN::VRBRAINRCOutput : public AP_HAL::RCOutput {
     uint16_t read(uint8_t ch);
     void     read(uint16_t* period_us, uint8_t len);
 private:
-    void InitDefaultPWM(void);
-    void InitPWM(uint8_t ext_mag);
     uint32_t _timer_period(uint16_t speed_hz);
+    uint8_t _num_motors;
 
     unsigned int output_channel_ch1;
     unsigned int output_channel_ch2;

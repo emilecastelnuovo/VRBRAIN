@@ -131,7 +131,7 @@ static void setupADC() {
 
 
 static void setupTimers() {
-    timer_foreach(timerDefaultConfig);
+    //timer_foreach(timerDefaultConfig);
 }
 
 //static void adcDefaultConfig(const adc_dev *dev) {
@@ -161,20 +161,21 @@ void timerDefaultConfig(timer_dev *dev) {
 		{
 			/* Timer clock: 168 Mhz */
 			/* 
-			 * The objective is to generate PWM signal at 490 Hz 
-			 * The lowest possible prescaler is 5
-			 * Period = (SystemCoreClock / (490 * 6)) - 1 = 57141
+			 * The default configuration for motor output is 50Hz
+			 * prescaler = (SystemCoreClock / (2000000)) - 1 = 83  (2MHz 0.5us tick)
 			 */			
-			TIM_TimeBaseStructure.TIM_Prescaler = 5;
-			TIM_TimeBaseStructure.TIM_Period = 57141;				
+		        uint32_t period = (2000000UL / 50) - 1; // 50 Hz
+		        uint32_t prescaler =  (uint16_t) ((SystemCoreClock) / 2000000) - 1; //2MHz 0.5us ticks
+
+		        TIM_TimeBaseStructure.TIM_Prescaler = prescaler;
+			TIM_TimeBaseStructure.TIM_Period = period;
 		}
 		else 
 		{
 			/* Timer clock: 84 Mhz */
 			/* 
-			 * The objective is to generate PWM signal at 490 Hz 
-			 * The lowest possible prescaler is 2
-			 * Period = (SystemCoreClock / 2 / (490 * 3)) - 1 = 57141
+			 * The default configuration for motor output is 50Hz
+			 * prescaler = (SystemCoreClock / 2 / (2000000)) - 1 = 41 (2MHz 0.5us tick)
 			 */
 		        uint32_t period = (2000000UL / 50) - 1; // 50 Hz
 		        uint32_t prescaler =  (uint16_t) ((SystemCoreClock /2) / 2000000) - 1; //2MHz 0.5us ticks
@@ -187,7 +188,7 @@ void timerDefaultConfig(timer_dev *dev) {
 		TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 		TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
 		TIM_TimeBaseInit(dev->regs, &TIM_TimeBaseStructure);
-	
+	/*
         for (int channel = 1; channel <= 4; channel++) {
             
 			switch (channel)
@@ -211,6 +212,7 @@ void timerDefaultConfig(timer_dev *dev) {
 			}
                 
         }
+        */
         // fall-through
     case TIMER_BASIC:
         break;

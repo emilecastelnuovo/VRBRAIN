@@ -38,7 +38,7 @@ static VRBRAINRCOutput rcoutDriver;
 static VRBRAINScheduler schedulerInstance;
 static VRBRAINUtil utilInstance;
 
-
+uint8_t g_ext_mag_detect;
 
 HAL_VRBRAIN::HAL_VRBRAIN() :
     AP_HAL::HAL(
@@ -72,14 +72,17 @@ static uint8_t detect_compass(void){
 
     if(compass_ext.init()){
 	hal.console->printf_P(PSTR("External Compass found!"));
+	g_ext_mag_detect = 1;
 	return 1;
     }
     if(compass.init()){
 	hal.console->printf_P(PSTR("Internal Compass found!"));
+	g_ext_mag_detect = 0;
 	return 0;
     }
-
+return 0;
 }
+
 void HAL_VRBRAIN::init(int argc,char* const argv[]) const
 {
   /* initialize all drivers and private members here.
