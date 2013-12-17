@@ -41,6 +41,7 @@ private:
 
     /* private variables to communicate with input capture isr */
     static volatile uint16_t _pulse_capt[VRBRAIN_RC_INPUT_NUM_CHANNELS];
+    static volatile uint32_t _last_pulse[VRBRAIN_RC_INPUT_NUM_CHANNELS];
     static volatile uint8_t  _valid_channels;
 };
 

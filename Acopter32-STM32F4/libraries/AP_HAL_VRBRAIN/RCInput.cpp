@@ -24,6 +24,7 @@ extern const AP_HAL::HAL& hal;
 
 /* private variables to communicate with input capture isr */
 volatile uint16_t VRBRAINRCInput::_pulse_capt[VRBRAIN_RC_INPUT_NUM_CHANNELS] = {0};
+volatile uint32_t VRBRAINRCInput::_last_pulse[VRBRAIN_RC_INPUT_NUM_CHANNELS] = {0};
 volatile uint8_t  VRBRAINRCInput::_valid_channels = 0;
 
 volatile unsigned char radio_status_rc = 0;
@@ -65,6 +66,7 @@ void VRBRAINRCInput::rxIntPPMSUM(uint8_t state, uint16_t value)
 	{
         if (channel_ctr < VRBRAIN_RC_INPUT_NUM_CHANNELS) {
             _pulse_capt[channel_ctr] = value;
+            _last_pulse[channel_ctr] = systick_uptime();
             channel_ctr++;
             if (channel_ctr == VRBRAIN_RC_INPUT_NUM_CHANNELS) {
                 _valid_channels = VRBRAIN_RC_INPUT_NUM_CHANNELS;
@@ -166,6 +168,8 @@ uint8_t VRBRAINRCInput::valid_channels()
 uint16_t VRBRAINRCInput::read(uint8_t ch)
     {
     uint16_t data;
+    uint32_t pulse;
+
     noInterrupts();
     if (!g_is_ppmsum)
 	{
@@ -175,11 +179,15 @@ uint16_t VRBRAINRCInput::read(uint8_t ch)
     else
 	{
 	data = _pulse_capt[ch];
+	pulse = _last_pulse[ch];
 	}
     interrupts();
 
     /* Check for override */
     uint16_t over = _override[ch];
+
+    if((g_is_ppmsum) && (ch == 2) && (systick_uptime() - pulse > 50))
+	data = 900;
 
     return (over == 0) ? data : over;
     }
@@ -191,8 +199,12 @@ uint8_t VRBRAINRCInput::read(uint16_t* periods, uint8_t len)
 	{
 	    if (!g_is_ppmsum)
 		periods[i] = pwmRead(i);
-	    else
-		periods[i] = _pulse_capt[i];
+	    else{
+		if ( i == 2 && (systick_uptime() - _last_pulse[i] > 50) )
+		    periods[i] = 900;
+		else
+		    periods[i] = _pulse_capt[i];
+	    }
 
 	    if (_override[i] != 0)
 		periods[i] = _override[i];
