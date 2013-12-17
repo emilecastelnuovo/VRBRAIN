@@ -212,8 +212,8 @@ void timer_set_mode(timer_dev *dev, uint8_t channel, timer_mode mode) {
  */
 void timer_foreach(void (*fn)(timer_dev*)) {
     //fn(TIMER1);
-    fn(TIMER2);
-    fn(TIMER3);
+    //fn(TIMER2);
+    //fn(TIMER3);
     //fn(TIMER4);
     //fn(TIMER5);
     //fn(TIMER6);

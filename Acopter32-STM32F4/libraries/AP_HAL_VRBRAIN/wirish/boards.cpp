@@ -131,7 +131,7 @@ static void setupADC() {
 
 
 static void setupTimers() {
-    //timer_foreach(timerDefaultConfig);
+    timer_foreach(timerDefaultConfig);
 }
 
 //static void adcDefaultConfig(const adc_dev *dev) {
