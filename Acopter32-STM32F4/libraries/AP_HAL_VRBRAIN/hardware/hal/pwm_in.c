@@ -446,7 +446,7 @@ void pwmInit()
 uint16_t pwmRead(uint8_t channel)
     {
     if(channel == 2) {
-	if(Inputs[channel].last_pulse - systick_uptime() > 40) {
+	if(systick_uptime() - Inputs[channel].last_pulse > 50) {
 	    return 900;
 	}
     }
