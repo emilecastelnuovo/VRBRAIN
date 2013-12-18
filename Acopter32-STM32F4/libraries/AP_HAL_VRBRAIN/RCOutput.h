@@ -8,19 +8,6 @@
 
 #define VRBRAIN_MAX_OUTPUT_CHANNELS 12
 
-#define MOTORID1 0
-#define MOTORID2 1
-#define MOTORID3 2
-#define MOTORID4 3
-#define MOTORID5 4
-#define MOTORID6 5
-#define MOTORID7 6
-#define MOTORID8 7
-#define MOTORID9 8
-#define MOTORID10 9
-#define MOTORID11 10
-#define MOTORID12 11
-
 class VRBRAIN::VRBRAINRCOutput : public AP_HAL::RCOutput {
     void     init(void* implspecific);
     void     set_freq(uint32_t chmask, uint16_t freq_hz);
@@ -37,19 +24,19 @@ private:
     uint32_t _timer_period(uint16_t speed_hz);
     uint8_t _num_motors;
 
-    unsigned int output_channel_ch1;
-    unsigned int output_channel_ch2;
-    unsigned int output_channel_ch3;
-    unsigned int output_channel_ch4;
-    unsigned int output_channel_ch5;
-    unsigned int output_channel_ch6;
-    unsigned int output_channel_ch7;
-    unsigned int output_channel_ch8;
-    unsigned int output_channel_ch9;
-    unsigned int output_channel_ch10;
-    unsigned int output_channel_ch11;
-    unsigned int output_channel_ch12;
-    unsigned int output_channel_raw[VRBRAIN_MAX_OUTPUT_CHANNELS];
+    uint8_t out_ch1;
+    uint8_t out_ch2;
+    uint8_t out_ch3;
+    uint8_t out_ch4;
+    uint8_t out_ch5;
+    uint8_t out_ch6;
+    uint8_t out_ch7;
+    uint8_t out_ch8;
+    uint8_t out_ch9;
+    uint8_t out_ch10;
+    uint8_t out_ch11;
+    uint8_t out_ch12;
+    uint16_t output_channel_raw[VRBRAIN_MAX_OUTPUT_CHANNELS];
 
 };
 

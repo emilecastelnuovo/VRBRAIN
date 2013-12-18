@@ -66,20 +66,17 @@ extern const AP_HAL::HAL& hal;
 static void detect_compass(void){
 
     AP_Compass_HMC5843_EXT compass_ext;
-    AP_Compass_HMC5843 compass;
 
     hal.scheduler->delay(10);
+
+    g_ext_mag_detect = 0;
 
     if(compass_ext.init()){
 	hal.console->printf_P(PSTR("External Compass found!"));
 	g_ext_mag_detect = 1;
 	return;
     }
-    if(compass.init()){
-	hal.console->printf_P(PSTR("Internal Compass found!"));
-	g_ext_mag_detect = 0;
-	return;
-    }
+
 return;
 }
 

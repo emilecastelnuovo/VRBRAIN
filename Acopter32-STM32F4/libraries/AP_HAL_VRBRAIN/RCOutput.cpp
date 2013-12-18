@@ -24,81 +24,65 @@ void VRBRAINRCOutput::init(void* implspecific)
     if(g_is_ppmsum)
 	hal.console->print_P("is PPMSUM");
 
-    output_channel_ch1=48;  //Timer2 ch2
-    output_channel_ch2=49;  //Timer2 ch3
-    output_channel_ch3=50;  //Timer2 ch4
-    output_channel_ch4=36;  //Timer3 ch2
-    output_channel_ch5=46;  //Timer3 ch3
-    output_channel_ch6=45;  //Timer3 ch4
-    output_channel_ch7=101; //Timer4 ch3
-    output_channel_ch8=25;  //Timer4 ch4
-    output_channel_ch9=23;  //Timer8
-    output_channel_ch10=24; //Timer8
-    output_channel_ch11=89; //Timer8
-    output_channel_ch12=60; //Timer8
-
-    analogOutPin[MOTORID1] = output_channel_ch1;
-    analogOutPin[MOTORID2] = output_channel_ch2;
-    analogOutPin[MOTORID3] = output_channel_ch3;
-    analogOutPin[MOTORID4] = output_channel_ch4;
-    analogOutPin[MOTORID5] = output_channel_ch5;
-    analogOutPin[MOTORID6] = output_channel_ch6;
+    out_ch1=48;  //Timer2 ch2
+    out_ch2=49;  //Timer2 ch3
+    out_ch3=50;  //Timer2 ch4
+    out_ch4=36;  //Timer3 ch2
+    out_ch5=46;  //Timer3 ch3
+    out_ch6=45;  //Timer3 ch4
+    out_ch7=101; //Timer4 ch3
+    out_ch8=25;  //Timer4 ch4
+    out_ch9=23;  //Timer8 ch1
+    out_ch10=24; //Timer8 ch2
+    out_ch11=89; //Timer8 ch3
+    out_ch12=60; //Timer8 ch4
 
     _num_motors = 6;
 
-    if(!g_ext_mag_detect){
-	analogOutPin[MOTORID7] = output_channel_ch7;
-	analogOutPin[MOTORID8] = output_channel_ch8;
-	_num_motors = 8;
-	if(g_is_ppmsum){
-	    analogOutPin[MOTORID9] = output_channel_ch9;
-	    analogOutPin[MOTORID10] = output_channel_ch10;
-	    analogOutPin[MOTORID11] = output_channel_ch11;
-	    analogOutPin[MOTORID12] = output_channel_ch12;
-	    _num_motors = 12;
-	}
-    }else {
-	if(g_is_ppmsum){
-	    analogOutPin[MOTORID7] = output_channel_ch9;
-	    analogOutPin[MOTORID8] = output_channel_ch10;
-	    analogOutPin[MOTORID9] = output_channel_ch11;
-	    analogOutPin[MOTORID10] = output_channel_ch12;
-	    _num_motors = 10;
-	}
-    }
-
     /*Enable CH1 to CH3 outputs*/
     timerDefaultConfig(TIMER2);
-    pwm_mode(TIMER2, 2); //CH1
-    pwm_mode(TIMER2, 3); //CH2
-    pwm_mode(TIMER2, 4); //CH3
+    pwm_mode(PIN_MAP[out_ch1].timer_device, 2); //CH1
+    pwm_mode(PIN_MAP[out_ch2].timer_device, 3); //CH2
+    pwm_mode(PIN_MAP[out_ch3].timer_device, 4); //CH3
 
     /*Enable CH4 to CH6 outputs*/
     timerDefaultConfig(TIMER3);
-    pwm_mode(TIMER3, 2); //CH4
-    pwm_mode(TIMER3, 3); //CH5
-    pwm_mode(TIMER3, 4); //CH6
+    pwm_mode(PIN_MAP[out_ch4].timer_device, 2); //CH4
+    pwm_mode(PIN_MAP[out_ch5].timer_device, 3); //CH5
+    pwm_mode(PIN_MAP[out_ch6].timer_device, 4); //CH6
 
     /*If external mag is detected then switch off TIMER4 to enable I2C on those channels */
-    if (g_ext_mag_detect){
-	timer_disable(TIMER4);
-    } else {
+    if (!g_ext_mag_detect){
 	/*else enable CH7 and CH8 on TIMER4*/
 	timerDefaultConfig(TIMER4);
-	pwm_mode(TIMER3, 3); //CH7
-	pwm_mode(TIMER3, 4); //CH8
+	pwm_mode(PIN_MAP[out_ch7].timer_device, 3); //CH7
+	pwm_mode(PIN_MAP[out_ch8].timer_device, 4); //CH8
+	_num_motors = 8;
+	if(g_is_ppmsum){
+	    /*enable 4 outputs if PPMSUM is detected*/
+	    timerDefaultConfig(TIMER8);
+	    pwm_mode(PIN_MAP[out_ch9].timer_device, 1); //CH9
+	    pwm_mode(PIN_MAP[out_ch10].timer_device, 2); //CH10
+	    pwm_mode(PIN_MAP[out_ch11].timer_device, 3); //CH11
+	    pwm_mode(PIN_MAP[out_ch12].timer_device, 4); //CH12
+	    _num_motors = 12;
+	}
+    } else {
+	timer_disable(TIMER4);
+	if(g_is_ppmsum){
+	    /*enable 4 outputs if PPMSUM is detected*/
+	    timerDefaultConfig(TIMER8);
+	    pwm_mode(PIN_MAP[out_ch7].timer_device, 1); //CH9
+	    pwm_mode(PIN_MAP[out_ch8].timer_device, 2); //CH10
+	    pwm_mode(PIN_MAP[out_ch9].timer_device, 3); //CH11
+	    pwm_mode(PIN_MAP[out_ch10].timer_device, 4); //CH12
+	    _num_motors = 10;
+	}
     }
     /*If ppm_sum is enabled, use inputs 5 to 8 for motor output*/
-    if(g_is_ppmsum){
-	/*ToDo enable 4 outputs*/
-	timerDefaultConfig(TIMER8);
-	pwm_mode(TIMER3, 1); //CH9
-	pwm_mode(TIMER3, 2); //CH10
-	pwm_mode(TIMER3, 3); //CH11
-	pwm_mode(TIMER3, 4); //CH12
-    }
 
-    for(int8_t i = MOTORID1; i <= (_num_motors -1); i++) {
+
+    for(int8_t i = 0; i <= (_num_motors -1); i++) {
 	hal.gpio->pinMode(analogOutPin[i],PWM);
     }
 
