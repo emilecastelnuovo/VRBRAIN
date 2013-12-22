@@ -7,7 +7,7 @@
 extern const AP_HAL::HAL& hal;
 using namespace VRBRAIN;
 
-static int analogOutPin[VRBRAIN_MAX_OUTPUT_CHANNELS];
+static int outPin[VRBRAIN_MAX_OUTPUT_CHANNELS];
 
 
 
@@ -37,53 +37,56 @@ void VRBRAINRCOutput::init(void* implspecific)
     out_ch11=89; //Timer8 ch3
     out_ch12=60; //Timer8 ch4
 
+    outPin[MOTORID1] = out_ch1;
+    outPin[MOTORID2] = out_ch2;
+    outPin[MOTORID3] = out_ch3;
+    outPin[MOTORID4] = out_ch4;
+    outPin[MOTORID5] = out_ch5;
+    outPin[MOTORID6] = out_ch6;
     _num_motors = 6;
 
     /*Enable CH1 to CH3 outputs*/
     timerDefaultConfig(TIMER2);
-    pwm_mode(PIN_MAP[out_ch1].timer_device, 2); //CH1
-    pwm_mode(PIN_MAP[out_ch2].timer_device, 3); //CH2
-    pwm_mode(PIN_MAP[out_ch3].timer_device, 4); //CH3
 
     /*Enable CH4 to CH6 outputs*/
     timerDefaultConfig(TIMER3);
-    pwm_mode(PIN_MAP[out_ch4].timer_device, 2); //CH4
-    pwm_mode(PIN_MAP[out_ch5].timer_device, 3); //CH5
-    pwm_mode(PIN_MAP[out_ch6].timer_device, 4); //CH6
 
     /*If external mag is detected then switch off TIMER4 to enable I2C on those channels */
-    if (!g_ext_mag_detect){
+    if (g_ext_mag_detect){
+	timer_disable(TIMER4);
+
+	if(g_is_ppmsum){
+	    outPin[MOTORID7] = out_ch9;
+	    outPin[MOTORID8] = out_ch10;
+	    outPin[MOTORID9] = out_ch11;
+	    outPin[MOTORID10] = out_ch12;
+	    /*enable 4 outputs if PPMSUM is detected*/
+	    timerDefaultConfig(TIMER8);
+	    _num_motors = 10;
+	}
+
+    } else {
+
+	outPin[MOTORID7] = out_ch7;
+	outPin[MOTORID8] = out_ch8;
 	/*else enable CH7 and CH8 on TIMER4*/
 	timerDefaultConfig(TIMER4);
-	pwm_mode(PIN_MAP[out_ch7].timer_device, 3); //CH7
-	pwm_mode(PIN_MAP[out_ch8].timer_device, 4); //CH8
 	_num_motors = 8;
 	if(g_is_ppmsum){
+	    outPin[MOTORID9] = out_ch9;
+	    outPin[MOTORID10] = out_ch10;
+	    outPin[MOTORID11] = out_ch11;
+	    outPin[MOTORID12] = out_ch12;
 	    /*enable 4 outputs if PPMSUM is detected*/
 	    timerDefaultConfig(TIMER8);
-	    pwm_mode(PIN_MAP[out_ch9].timer_device, 1); //CH9
-	    pwm_mode(PIN_MAP[out_ch10].timer_device, 2); //CH10
-	    pwm_mode(PIN_MAP[out_ch11].timer_device, 3); //CH11
-	    pwm_mode(PIN_MAP[out_ch12].timer_device, 4); //CH12
 	    _num_motors = 12;
-	}
-    } else {
-	timer_disable(TIMER4);
-	if(g_is_ppmsum){
-	    /*enable 4 outputs if PPMSUM is detected*/
-	    timerDefaultConfig(TIMER8);
-	    pwm_mode(PIN_MAP[out_ch7].timer_device, 1); //CH9
-	    pwm_mode(PIN_MAP[out_ch8].timer_device, 2); //CH10
-	    pwm_mode(PIN_MAP[out_ch9].timer_device, 3); //CH11
-	    pwm_mode(PIN_MAP[out_ch10].timer_device, 4); //CH12
-	    _num_motors = 10;
 	}
     }
     /*If ppm_sum is enabled, use inputs 5 to 8 for motor output*/
 
 
-    for(int8_t i = 0; i <= (_num_motors -1); i++) {
-	hal.gpio->pinMode(analogOutPin[i],PWM);
+    for(int8_t i = MOTORID1; i <= (_num_motors -1); i++) {
+	hal.gpio->pinMode(outPin[i],PWM);
     }
 
 }
@@ -168,7 +171,7 @@ void VRBRAINRCOutput::write(uint8_t ch, uint16_t period_us)
     uint16_t pwm = constrain_period(period_us) << 1;
 
 
-    uint8_t pin = analogOutPin[ch];
+    uint8_t pin = outPin[ch];
     timer_dev *dev = PIN_MAP[pin].timer_device;
 
     if (pin >= BOARD_NR_GPIO_PINS || dev == NULL || dev->type == TIMER_BASIC)
@@ -191,7 +194,7 @@ void VRBRAINRCOutput::write(uint8_t ch, uint16_t* period_us, uint8_t len)
 uint16_t VRBRAINRCOutput::read(uint8_t ch) 
 {
 
-    uint16_t pin = analogOutPin[ch];
+    uint16_t pin = outPin[ch];
     timer_dev *dev = PIN_MAP[pin].timer_device;
     if (pin >= BOARD_NR_GPIO_PINS || dev == NULL || dev->type == TIMER_BASIC)
 	{
