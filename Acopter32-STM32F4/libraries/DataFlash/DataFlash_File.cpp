@@ -46,12 +46,17 @@ DataFlash_File::DataFlash_File(const char *log_directory) :
 
 
 // initialisation
-void DataFlash_File::Init(void)
+void DataFlash_File::Init(const struct LogStructure *structure, uint8_t num_types)
 {
+    DataFlash_Class::Init(structure, num_types);
     // create the log directory if need be
     int ret;
-    ret = mkdir(_log_directory, 0777);
-    if (ret == -1 && errno != EEXIST) {
+    struct stat st;
+    ret = stat(_log_directory, &st);
+    if (ret == -1) {
+        ret = mkdir(_log_directory, 0777);
+    }
+    if (ret == -1) {
         hal.console->printf("Failed to create log directory %s", _log_directory);
         return;
     }
@@ -223,6 +228,21 @@ uint32_t DataFlash_File::_get_log_size(uint16_t log_num)
     return st.st_size;
 }
 
+uint32_t DataFlash_File::_get_log_time(uint16_t log_num)
+{
+    char *fname = _log_file_name(log_num);
+    if (fname == NULL) {
+        return 0;
+    }
+    struct stat st;
+    if (::stat(fname, &st) != 0) {
+        free(fname);
+        return 0;
+    }
+    free(fname);
+    return st.st_mtime;
+}
+
 /*
   find the number of pages in a log
  */
@@ -230,6 +250,51 @@ void DataFlash_File::get_log_boundaries(uint16_t log_num, uint16_t & start_page,
 {
     start_page = 0;
     end_page = _get_log_size(log_num) / DATAFLASH_PAGE_SIZE;
+}
+
+/*
+  find the number of pages in a log
+ */
+int16_t DataFlash_File::get_log_data(uint16_t log_num, uint16_t page, uint32_t offset, uint16_t len, uint8_t *data)
+{
+    if (!_initialised) {
+        return -1;
+    }
+    if (_read_fd != -1 && log_num != _read_fd_log_num) {
+        ::close(_read_fd);
+        _read_fd = -1;
+    }
+    if (_read_fd == -1) {
+        char *fname = _log_file_name(log_num);
+        if (fname == NULL) {
+            return -1;
+        }
+        _read_fd = open(fname, O_RDONLY);
+        free(fname);
+        if (_read_fd == -1) {
+            return -1;            
+        }
+        _read_offset = 0;
+        _read_fd_log_num = log_num;
+    }
+    uint32_t ofs = page * (uint32_t)DATAFLASH_PAGE_SIZE + offset;
+    if (ofs != _read_offset) {
+        ::lseek(_read_fd, ofs, SEEK_SET);
+    }
+    int16_t ret = (int16_t)::read(_read_fd, data, len);
+    if (ret > 0) {
+        _read_offset += ret;
+    }
+    return ret;
+}
+
+/*
+  find size and date of a log
+ */
+void DataFlash_File::get_log_info(uint16_t log_num, uint32_t &size, uint32_t &time_utc)
+{
+    size = _get_log_size(log_num);
+    time_utc = _get_log_time(log_num);
 }
 
 
@@ -259,6 +324,10 @@ uint16_t DataFlash_File::start_new_log(void)
         int fd = _write_fd;
         _write_fd = -1;
         ::close(fd);
+    }
+    if (_read_fd != -1) {
+        ::close(_read_fd);
+        _read_fd = -1;
     }
 
     uint16_t log_num = find_last_log();
@@ -292,8 +361,6 @@ uint16_t DataFlash_File::start_new_log(void)
 */
 void DataFlash_File::LogReadProcess(uint16_t log_num,
                                     uint16_t start_page, uint16_t end_page, 
-                                    uint8_t num_types,
-                                    const struct LogStructure *structure,
                                     void (*print_mode)(AP_HAL::BetterStream *port, uint8_t mode),
                                     AP_HAL::BetterStream *port)
 {
@@ -303,6 +370,7 @@ void DataFlash_File::LogReadProcess(uint16_t log_num,
     }
     if (_read_fd != -1) {
         ::close(_read_fd);
+        _read_fd = -1;
     }
     char *fname = _log_file_name(log_num);
     if (fname == NULL) {
@@ -313,6 +381,7 @@ void DataFlash_File::LogReadProcess(uint16_t log_num,
     if (_read_fd == -1) {
         return;
     }
+    _read_fd_log_num = log_num;
     _read_offset = 0;
     if (start_page != 0) {
         ::lseek(_read_fd, start_page * DATAFLASH_PAGE_SIZE, SEEK_SET);
@@ -344,7 +413,7 @@ void DataFlash_File::LogReadProcess(uint16_t log_num,
 
             case 2:
                 log_step = 0;
-                _print_log_entry(data, num_types, structure, print_mode, port);
+                _print_log_entry(data, print_mode, port);
                 break;
         }
         if (_read_offset >= (end_page+1) * DATAFLASH_PAGE_SIZE) {

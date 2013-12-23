@@ -72,6 +72,7 @@
 #define AUX_SWITCH_AUTO             16      // change to auto flight mode
 #define AUX_SWITCH_AUTOTUNE         17      // auto tune
 #define AUX_SWITCH_LAND             18      // change to LAND flight mode
+#define AUX_SWITCH_EPM              19      // Operate the EPM cargo gripper low=off, middle=neutral, high=on
 
 // values used by the ap.ch7_opt and ap.ch8_opt flags
 #define AUX_SWITCH_LOW              0       // indicates auxiliar switch is in the low position (pwm <1200)
@@ -236,38 +237,6 @@
 //repeating events
 #define RELAY_TOGGLE 5
 
-//  GCS Message ID's
-/// NOTE: to ensure we never block on sending MAVLink messages
-/// please keep each MSG_ to a single MAVLink message. If need be
-/// create new MSG_ IDs for additional messages on the same
-/// stream
-enum ap_message {
-    MSG_HEARTBEAT,
-    MSG_ATTITUDE,
-    MSG_LOCATION,
-    MSG_EXTENDED_STATUS1,
-    MSG_EXTENDED_STATUS2,
-    MSG_NAV_CONTROLLER_OUTPUT,
-    MSG_CURRENT_WAYPOINT,
-    MSG_VFR_HUD,
-    MSG_RADIO_OUT,
-    MSG_RADIO_IN,
-    MSG_RAW_IMU1,
-    MSG_RAW_IMU2,
-    MSG_RAW_IMU3,
-    MSG_GPS_RAW,
-    MSG_SYSTEM_TIME,
-    MSG_SERVO_OUT,
-    MSG_NEXT_WAYPOINT,
-    MSG_NEXT_PARAM,
-    MSG_STATUSTEXT,
-    MSG_LIMITS_STATUS,
-    MSG_AHRS,
-    MSG_SIMSTATE,
-    MSG_HWSTATUS,
-    MSG_RETRY_DEFERRED // this must be last
-};
-
 //  Logging parameters
 #define TYPE_AIRSTART_MSG               0x00
 #define TYPE_GROUNDSTART_MSG            0x01
@@ -354,7 +323,9 @@ enum ap_message {
 #define DATA_ACRO_TRAINER_DISABLED      43
 #define DATA_ACRO_TRAINER_LEVELING      44
 #define DATA_ACRO_TRAINER_LIMITED       45
-
+#define DATA_EPM_ON                     46
+#define DATA_EPM_OFF                    47
+#define DATA_EPM_NEUTRAL                48
 // RADIANS
 #define RADX100 0.000174532925f
 #define DEGX100 5729.57795f

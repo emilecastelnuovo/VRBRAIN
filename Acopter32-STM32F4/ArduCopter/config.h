@@ -92,12 +92,10 @@
  # ifndef  CONFIG_IMU_TYPE
   # define CONFIG_IMU_TYPE   CONFIG_IMU_MPU6000
  # endif
- //# define CONFIG_IMU_TYPE   CONFIG_IMU_MPU6000_EXT
  # define CONFIG_RELAY      DISABLED
  # define CONFIG_SONAR_SOURCE SONAR_SOURCE_ANALOG_PIN
  # define CONFIG_SONAR_SOURCE_ANALOG_PIN 47
  # define MAGNETOMETER ENABLED
- //# define COMPASS_EXT
  # define CONFIG_BARO     AP_BARO_MS5611
  # define CONFIG_MS5611_SERIAL AP_BARO_MS5611_SPI
  # define CONFIG_ADC        DISABLED
@@ -163,9 +161,6 @@
 //
 #ifndef CONFIG_IMU_TYPE
  # define CONFIG_IMU_TYPE CONFIG_IMU_OILPAN
-#endif
-#ifndef MPU6K_FILTER
- # define MPU6K_FILTER MPU6K_DEFAULT_FILTER
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -430,6 +425,12 @@
 //  Crop Sprayer
 #ifndef SPRAYER
  # define SPRAYER  DISABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+//	EPM cargo gripper
+#ifndef EPM_ENABLED
+ # define EPM_ENABLED DISABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

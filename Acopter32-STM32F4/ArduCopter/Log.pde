@@ -822,8 +822,6 @@ static void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page)
     cliSerial->println_P(PSTR(HAL_BOARD_NAME));
 
 	DataFlash.LogReadProcess(log_num, start_page, end_page, 
-                             sizeof(log_structure)/sizeof(log_structure[0]),
-                             log_structure, 
                              print_flight_mode,
                              cliSerial);
 }
@@ -833,7 +831,7 @@ static void start_logging()
 {
     if (g.log_bitmask != 0 && !ap.logging_started) {
         ap.logging_started = true;
-        DataFlash.StartNewLog(sizeof(log_structure)/sizeof(log_structure[0]), log_structure);
+        DataFlash.StartNewLog();
         DataFlash.Log_Write_Message_P(PSTR(FIRMWARE_STRING));
 
         // write system identifier as well if available
@@ -852,8 +850,8 @@ static void start_logging()
 static void Log_Write_Startup() {}
 static void Log_Write_Cmd(uint8_t num, const struct Location *wp) {}
 static void Log_Write_Mode(uint8_t mode) {}
-void Log_Write_IMU() {}
-void Log_Write_GPS() {}
+static void Log_Write_IMU() {}
+static void Log_Write_GPS() {}
 #if AUTOTUNE == ENABLED
 static void Log_Write_AutoTune(uint8_t axis, uint8_t tune_step, float rate_min, float rate_max, float new_gain_rp, float new_gain_rd, float new_gain_sp) {}
 static void Log_Write_AutoTuneDetails(int16_t angle_cd, float rate_cds) {}
