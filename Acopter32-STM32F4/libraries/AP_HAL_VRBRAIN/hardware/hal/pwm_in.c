@@ -234,6 +234,7 @@ static inline void pwmIRQHandler(TIM_TypeDef *tim)
 	    TIM_ClearITPendingBit(channel.tim, channel.tim_cc);
 	    val = TIM_GetCapture1(channel.tim);
 
+	    input->last_pulse = systick_uptime();
 	    input->rise = val;
 
 	    if (input->rise > last_val)
