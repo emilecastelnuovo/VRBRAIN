@@ -918,11 +918,8 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 };
 
 
-void setup() {
-
-    // this needs to be the first call, as it fills memory with
-    // sentinel values
-    memcheck_init();
+void setup() 
+{
     cliSerial = hal.console;
 
     // Load the default values of variables listed in var_info[]s
@@ -1591,15 +1588,9 @@ bool set_roll_pitch_mode(uint8_t new_roll_pitch_mode)
         case ROLL_PITCH_AUTO:
         case ROLL_PITCH_STABLE_OF:
         case ROLL_PITCH_DRIFT:
+        case ROLL_PITCH_LOITER:
         case ROLL_PITCH_SPORT:
             roll_pitch_initialised = true;
-            break;
-
-        case ROLL_PITCH_LOITER:
-            // require gps lock
-            if( ap.home_is_set ) {
-                roll_pitch_initialised = true;
-            }
             break;
 
 #if AUTOTUNE == ENABLED

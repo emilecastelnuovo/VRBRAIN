@@ -357,7 +357,7 @@
 #endif
 
 // expected magnetic field strength.  pre-arm checks will fail if 50% higher or lower than this value
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
  #ifndef COMPASS_MAGFIELD_EXPECTED
   # define COMPASS_MAGFIELD_EXPECTED     330        // pre arm will fail if mag field > 544 or < 115
  #endif
@@ -957,7 +957,7 @@
  # define LOGGING_ENABLED                ENABLED
 #endif
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
  // APM1 & APM2 default logging
  # define DEFAULT_LOG_BITMASK \
     MASK_LOG_ATTITUDE_MED | \

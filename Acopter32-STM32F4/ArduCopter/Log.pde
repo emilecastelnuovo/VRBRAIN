@@ -558,30 +558,6 @@ static void Log_Write_Event(uint8_t id)
     }
 }
 
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-struct PACKED log_Data_Int8t {
-    LOG_PACKET_HEADER;
-    uint8_t id;
-    int8_t data_value;
-};
-
-
-// Write an int8_t data packet
-static void Log_Write_Data(uint8_t id, int8_t value)
-{
-    if (g.log_bitmask != 0) {
-        struct log_Data_Int8t pkt = {
-            LOG_PACKET_HEADER_INIT(LOG_DATA_INT8_MSG),
-            id          : id,
-            data_value  : value
-        };
-        DataFlash.WriteBlock(&pkt, sizeof(pkt));
-    }
-}
-#endif
-
-
 struct PACKED log_Data_Int16t {
     LOG_PACKET_HEADER;
     uint8_t id;
@@ -786,10 +762,6 @@ static const struct LogStructure log_structure[] PROGMEM = {
       "STRT", "",            "" },
     { LOG_EVENT_MSG, sizeof(log_Event),         
       "EV",   "B",           "Id" },
-#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-    { LOG_DATA_INT8_MSG, sizeof(log_Data_Int8t),         
-      "D8",   "Bh",         "Id,Value" },
-#endif
     { LOG_DATA_INT16_MSG, sizeof(log_Data_Int16t),         
       "D16",   "Bh",         "Id,Value" },
     { LOG_DATA_UINT16_MSG, sizeof(log_Data_UInt16t),         
@@ -817,7 +789,7 @@ static void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page)
 
     cliSerial->printf_P(PSTR("\n" FIRMWARE_STRING
                              "\nFree RAM: %u\n"),
-                        (unsigned) memcheck_available_memory());
+                        (unsigned) hal.util->available_memory());
 
     cliSerial->println_P(PSTR(HAL_BOARD_NAME));
 
@@ -860,9 +832,6 @@ static void Log_Write_Current() {}
 static void Log_Write_Compass() {}
 static void Log_Write_Attitude() {}
 static void Log_Write_INAV() {}
-#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-static void Log_Write_Data(uint8_t id, int8_t value){}
-#endif
 static void Log_Write_Data(uint8_t id, int16_t value){}
 static void Log_Write_Data(uint8_t id, uint16_t value){}
 static void Log_Write_Data(uint8_t id, int32_t value){}
