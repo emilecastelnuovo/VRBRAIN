@@ -60,10 +60,10 @@
 #include <AP_Relay.h>       // APM relay
 #include <AP_Camera.h>          // Photo or video camera
 #include <AP_Airspeed.h>
-#include <memcheck.h>
 
 #include <APM_OBC.h>
 #include <APM_Control.h>
+#include <GCS.h>
 #include <GCS_MAVLink.h>    // MAVLink GCS definitions
 #include <AP_Mount.h>           // Camera/Antenna mount
 #include <AP_Declination.h> // ArduPilot Mega Declination Helper Library
@@ -82,6 +82,8 @@
 #include <AP_Notify.h>      // Notify library
 #include <AP_BattMonitor.h> // Battery monitor library
 
+#include <AP_Arming.h>
+
 // Pre-AP_HAL compatibility
 #include "compat.h"
 
@@ -95,7 +97,6 @@
 static AP_Vehicle::FixedWing aparm;
 
 #include "Parameters.h"
-#include "GCS.h"
 
 
 
@@ -138,7 +139,7 @@ static RC_Channel *channel_pitch;
 static RC_Channel *channel_throttle;
 static RC_Channel *channel_rudder;
 
-// notification object for LEDs, buzzers etc
+// notification object for LEDs, buzzers etc (parameter set to false disables external leds)
 static AP_Notify notify;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,8 +297,8 @@ static bool guided_throttle_passthru;
 ////////////////////////////////////////////////////////////////////////////////
 // GCS selection
 ////////////////////////////////////////////////////////////////////////////////
-static GCS_MAVLINK gcs0;
-static GCS_MAVLINK gcs3;
+static const uint8_t num_gcs = MAVLINK_COMM_NUM_BUFFERS;
+static GCS_MAVLINK gcs[MAVLINK_COMM_NUM_BUFFERS];
 
 // selected navigation controller
 static AP_Navigation *nav_controller = &L1_controller;
@@ -313,6 +314,11 @@ static AP_SpdHgtControl *SpdHgt_Controller = &TECS_controller;
 static AP_HAL::AnalogSource *rssi_analog_source;
 
 static AP_HAL::AnalogSource *vcc_pin;
+
+////////////////////////////////////////////////////////////////////////////////
+// Sonar
+////////////////////////////////////////////////////////////////////////////////
+static AP_RangeFinder_analog sonar;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Relay
@@ -350,12 +356,14 @@ static bool usb_connected;
 ////////////////////////////////////////////////////////////////////////////////
 // This is the state of the flight control system
 // There are multiple states defined such as MANUAL, FBW-A, AUTO
-enum FlightMode control_mode  = INITIALISING;
+static enum FlightMode control_mode  = INITIALISING;
+
 // Used to maintain the state of the previous control switch position
-// This is set to -1 when we need to re-read the switch
-uint8_t oldSwitchPosition;
+// This is set to 254 when we need to re-read the switch
+static uint8_t oldSwitchPosition = 254;
+
 // This is used to enable the inverted flight feature
-bool inverted_flight     = false;
+static bool inverted_flight     = false;
 
 static struct {
     // These are trim values used for elevon control
@@ -406,6 +414,11 @@ static struct {
 
     // A timer used to track how long we have been in a "short failsafe" condition due to loss of RC signal
     uint32_t ch3_timer_ms;
+
+    uint32_t last_valid_rc_ms;
+
+    // last RADIO status packet
+    uint32_t last_radio_status_remrssi_ms;
 } failsafe;
 
 
@@ -690,14 +703,19 @@ static uint16_t mainLoop_count;
 #if MOUNT == ENABLED
 // current_loc uses the baro/gps soloution for altitude rather than gps only.
 // mabe one could use current_loc for lat/lon too and eliminate g_gps alltogether?
-AP_Mount camera_mount(&current_loc, g_gps, ahrs, 0);
+static AP_Mount camera_mount(&current_loc, g_gps, ahrs, 0);
 #endif
 
 #if MOUNT2 == ENABLED
 // current_loc uses the baro/gps soloution for altitude rather than gps only.
 // mabe one could use current_loc for lat/lon too and eliminate g_gps alltogether?
-AP_Mount camera_mount2(&current_loc, g_gps, ahrs, 1);
+static AP_Mount camera_mount2(&current_loc, g_gps, ahrs, 1);
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+// Arming/Disarming mangement class
+////////////////////////////////////////////////////////////////////////////////
+static AP_Arming arming(ahrs, barometer, home_is_set, gcs_send_text_P);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Top-level logic
@@ -718,8 +736,9 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { set_servos,             1,   1600 },
     { read_control_switch,    7,   1000 },
     { gcs_retry_deferred,     1,   1000 },
-    { update_GPS,             5,   3700 },
-    { navigate,               5,   3000 }, // 10
+    { update_GPS_50Hz,        1,   2500 },
+    { update_GPS_10Hz,        5,   2500 }, // 10
+    { navigate,               5,   3000 },
     { update_compass,         5,   1200 },
     { read_airspeed,          5,   1200 },
     { update_alt,             5,   3400 },
@@ -728,39 +747,36 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { obc_fs_check,           5,   1000 },
     { gcs_update,             1,   1700 },
     { gcs_data_stream_send,   1,   3000 },
-    { update_mount,           1,   1500 },
     { update_events,		 15,   1500 }, // 20
     { check_usb_mux,          5,    300 },
     { read_battery,           5,   1000 },
     { compass_accumulate,     1,   1500 },
     { barometer_accumulate,   1,    900 },
     { update_notify,          1,    300 },
-    { one_second_loop,       50,   3900 },
+    { read_sonars,            1,    500 },
+    { one_second_loop,       50,   1000 },
     { check_long_failsafe,   15,   1000 },
-    { airspeed_ratio_update, 50,   1000 },
-    { update_logging,         5,   1200 },
     { read_receiver_rssi,     5,   1000 },
+    { airspeed_ratio_update, 50,   1000 }, // 30
+    { update_mount,           1,   1500 },
+    { log_perf_info,        500,   1000 },
+    { compass_save,        3000,   2500 },
+    { update_logging1,        5,   1700 },
+    { update_logging2,        5,   1700 },
 };
 
 // setup the var_info table
 AP_Param param_loader(var_info, WP_START_BYTE);
 
 void setup() {
-    // this needs to be the first call, as it fills memory with
-    // sentinel values
-    memcheck_init();
-
     cliSerial = hal.console;
 
     // load the default values of variables listed in var_info[]
     AP_Param::setup_sketch_defaults();
 
-    // arduplane does not use arming nor pre-arm checks
-    AP_Notify::flags.armed = true;
-    AP_Notify::flags.pre_arm_check = true;
     AP_Notify::flags.failsafe_battery = false;
 
-    notify.init();
+    notify.init(false);
 
     battery.init();
 
@@ -896,20 +912,30 @@ static void barometer_accumulate(void)
 /*
   do 10Hz logging
  */
-static void update_logging(void)
+static void update_logging1(void)
 {
     if ((g.log_bitmask & MASK_LOG_ATTITUDE_MED) && !(g.log_bitmask & MASK_LOG_ATTITUDE_FAST))
         Log_Write_Attitude();
 
     if ((g.log_bitmask & MASK_LOG_ATTITUDE_MED) && !(g.log_bitmask & MASK_LOG_IMU))
         Log_Write_IMU();
-    
+}
+
+/*
+  do 10Hz logging - part2
+ */
+static void update_logging2(void)
+{
     if (g.log_bitmask & MASK_LOG_CTUN)
         Log_Write_Control_Tuning();
     
     if (g.log_bitmask & MASK_LOG_NTUN)
         Log_Write_Nav_Tuning();
+
+    if (g.log_bitmask & MASK_LOG_RC)
+        Log_Write_RC();
 }
+
 
 /*
   check for OBC failsafe check
@@ -965,25 +991,23 @@ static void one_second_loop()
     mavlink_system.sysid = g.sysid_this_mav;
 
     update_aux();
+}
 
-    static uint8_t counter;
-    counter++;
-
-    if (counter % 10 == 0) {
-        if (scheduler.debug() != 0) {
-            hal.console->printf_P(PSTR("G_Dt_max=%lu\n"), (unsigned long)G_Dt_max);
-        }
-        if (g.log_bitmask & MASK_LOG_PM)
-            Log_Write_Performance();
-        G_Dt_max = 0;
-        resetPerfData();
+static void log_perf_info()
+{
+    if (scheduler.debug() != 0) {
+        hal.console->printf_P(PSTR("G_Dt_max=%lu\n"), (unsigned long)G_Dt_max);
     }
+    if (g.log_bitmask & MASK_LOG_PM)
+        Log_Write_Performance();
+    G_Dt_max = 0;
+    resetPerfData();
+}
 
-    if (counter >= 60) {                                               
-        if(g.compass_enabled) {
-            compass.save_offsets();
-        }
-        counter = 0;
+static void compass_save()
+{
+    if (g.compass_enabled) {
+        compass.save_offsets();
     }
 }
 
@@ -1014,18 +1038,23 @@ static void airspeed_ratio_update(void)
 /*
   read the GPS and update position
  */
-static void update_GPS(void)
+static void update_GPS_50Hz(void)
 {
     static uint32_t last_gps_reading;
     g_gps->update();
-
     if (g_gps->last_message_time_ms() != last_gps_reading) {
         last_gps_reading = g_gps->last_message_time_ms();
         if (g.log_bitmask & MASK_LOG_GPS) {
             Log_Write_GPS();
         }
     }
+}
 
+/*
+  read update GPS position - 10Hz update
+ */
+static void update_GPS_10Hz(void)
+{
     // get position from AHRS
     have_position = ahrs.get_projected_position(current_loc);
 
@@ -1070,7 +1099,8 @@ static void update_GPS(void)
         }
 #endif        
 
-        if (hal.util->safety_switch_state() == AP_HAL::Util::SAFETY_DISARMED) {
+        if (!arming.is_armed() ||
+            hal.util->safety_switch_state() == AP_HAL::Util::SAFETY_DISARMED) {
             update_home();
         }
     }

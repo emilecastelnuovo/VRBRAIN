@@ -97,16 +97,26 @@ public:
         k_param_ground_steer_alt,        
         k_param_ground_steer_dps,
         k_param_rally_limit_km,
+        k_param_hil_err_limit,
+        k_param_sonar,
+
+        // 100: Arming parameters
+        k_param_arming = 100,
+
+        // 105: Extra parameters
+        k_param_fence_retalt = 105,
 
         // 110: Telemetry control
         //
-        k_param_gcs0 = 110,         // stream rates for port0
-        k_param_gcs3,               // stream rates for port3
+        k_param_gcs0 = 110,         // stream rates for uartA
+        k_param_gcs1,               // stream rates for uartC
         k_param_sysid_this_mav,
         k_param_sysid_my_gcs,
-        k_param_serial3_baud,
+        k_param_serial1_baud,
         k_param_telem_delay,
         k_param_serial0_baud,
+        k_param_gcs2,               // stream rates for uartD
+        k_param_serial2_baud,
 
         // 120: Fly-by-wire control
         //
@@ -270,8 +280,15 @@ public:
     AP_Int16 sysid_this_mav;
     AP_Int16 sysid_my_gcs;
     AP_Int8 serial0_baud;
-    AP_Int8 serial3_baud;
+    AP_Int8 serial1_baud;
+#if MAVLINK_COMM_NUM_BUFFERS > 2
+    AP_Int8 serial2_baud;
+#endif
     AP_Int8 telem_delay;
+
+#if HIL_MODE != HIL_MODE_DISABLED
+    AP_Float hil_err_limit;
+#endif
 
     // Feed-forward gains
     //
@@ -314,6 +331,7 @@ public:
     AP_Int8 fence_channel;
     AP_Int16 fence_minalt;    // meters
     AP_Int16 fence_maxalt;    // meters
+    AP_Int16 fence_retalt;    // meters
 #endif
 
     AP_Int8 rally_total;

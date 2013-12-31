@@ -9,6 +9,7 @@
 #define ASCALAR(v, name, def) { aparm.v.vtype, name, Parameters::k_param_ ## v, &aparm.v, {def_value : def} }
 #define GGROUP(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, &g.v, {group_info : class::var_info} }
 #define GOBJECT(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, &v, {group_info : class::var_info} }
+#define GOBJECTN(v, pname, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## pname, &v, {group_info : class::var_info} }
 
 const AP_Param::Info var_info[] PROGMEM = {
     GSCALAR(format_version,         "FORMAT_VERSION", 0),
@@ -30,17 +31,26 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: SERIAL0_BAUD
     // @DisplayName: USB Console Baud Rate
-    // @Description: The baud rate used on the main uart
+    // @Description: The baud rate used on the USB console
     // @Values: 1:1200,2:2400,4:4800,9:9600,19:19200,38:38400,57:57600,111:111100,115:115200
     // @User: Standard
     GSCALAR(serial0_baud,           "SERIAL0_BAUD",   SERIAL0_BAUD/1000),
 
-    // @Param: SERIAL3_BAUD
+    // @Param: SERIAL1_BAUD
     // @DisplayName: Telemetry Baud Rate
-    // @Description: The baud rate used on the telemetry port
+    // @Description: The baud rate used on the first telemetry port
     // @Values: 1:1200,2:2400,4:4800,9:9600,19:19200,38:38400,57:57600,111:111100,115:115200
     // @User: Standard
-    GSCALAR(serial3_baud,           "SERIAL3_BAUD",   SERIAL3_BAUD/1000),
+    GSCALAR(serial1_baud,           "SERIAL1_BAUD",   SERIAL1_BAUD/1000),
+
+#if MAVLINK_COMM_NUM_BUFFERS > 2
+    // @Param: SERIAL2_BAUD
+    // @DisplayName: Telemetry Baud Rate
+    // @Description: The baud rate used on the second telemetry port
+    // @Values: 1:1200,2:2400,4:4800,9:9600,19:19200,38:38400,57:57600,111:111100,115:115200
+    // @User: Standard
+    GSCALAR(serial2_baud,           "SERIAL2_BAUD",   SERIAL2_BAUD/1000),
+#endif
 
     // @Param: TELEM_DELAY
     // @DisplayName: Telemetry startup delay 
@@ -257,6 +267,15 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Increment: 1
     // @User: Standard
     GSCALAR(fence_maxalt,           "FENCE_MAXALT",   0),
+
+    // @Param: FENCE_RETALT
+    // @DisplayName: Fence Return Altitude
+    // @Description: Altitude the aircraft will transit to when a fence breach occurs.  If FENCE_RETALT is <= 0 then the midpoint between FENCE_MAXALT and FENCE_MINALT is used, unless FENCE_MAXALT < FENCE_MINALT.  If FENCE_MAXALT < FENCE_MINALT AND FENCE_RETALT is <= 0 then ALT_HOLD_RTL is the altitude used on a fence breach.
+    // @Units: meters
+    // @Range: 0 32767
+    // @Increment: 1
+    // @User: Standard
+    GSCALAR(fence_retalt,           "FENCE_RETALT",   0),
 #endif
 
     // @Param: RALLY_TOTAL
@@ -430,10 +449,10 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: FS_GCS_ENABL
     // @DisplayName: GCS failsafe enable
-    // @Description: Enable ground control station telemetry failsafe. Failsafe will trigger after 20 seconds of no MAVLink heartbeat messages. WARNING: Enabling this option opens up the possibility of your plane going into failsafe mode and running the motor on the ground it it loses contact with your ground station. If this option is enabled on an electric plane then either use a separate motor arming switch or remove the propeller in any ground testing.
-    // @Values: 0:Disabled,1:Enabled
+    // @Description: Enable ground control station telemetry failsafe. Failsafe will trigger after FS_LONG_TIMEOUT seconds of no MAVLink heartbeat messages. There are two possible enabled settings. Seeing FS_GCS_ENABL to 1 means that GCS failsafe will be triggered when the aircraft has not received a MAVLink HEARTBEAT message. Setting FS_GCS_ENABL to 2 means that GCS failsafe will be triggerded on either a loss of HEARTBEAT messages, or a RADIO_STATUS message from a MAVLink enabled 3DR radio indicating that the ground station is not receiving status updates from the aircraft, which is indicated by the RADIO_STATUS.remrssi field being zero (this may happen if you have a one way link due to asymmetric noise on the ground station and aircraft radios). WARNING: Enabling this option opens up the possibility of your plane going into failsafe mode and running the motor on the ground it it loses contact with your ground station. If this option is enabled on an electric plane then you should enable ARMING_REQUIRED. 
+    // @Values: 0:Disabled,1:Heartbeat,2:HeartbeatAndREMRSSI
     // @User: Standard
-    GSCALAR(gcs_heartbeat_fs_enabled, "FS_GCS_ENABL", GCS_HEARTBEAT_FAILSAFE),
+    GSCALAR(gcs_heartbeat_fs_enabled, "FS_GCS_ENABL", GCS_FAILSAFE_OFF),
 
     // @Param: FLTMODE_CH
     // @DisplayName: Flightmode channel
@@ -665,7 +684,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: ALT_HOLD_RTL
     // @DisplayName: RTL altitude
-    // @Description: Return to launch target altitude. This is the altitude the plane will aim for and loiter at when returning home. If this is negative (usually -1) then the plane will use the current altitude at the time of entering RTL.
+    // @Description: Return to launch target altitude. This is the altitude the plane will aim for and loiter at when returning home. If this is negative (usually -1) then the plane will use the current altitude at the time of entering RTL. Note that when transiting to a Rally Point the alitude of the Rally Point is used instead of ALT_HOLD_RTL.
     // @Units: centimeters
     // @User: User
     GSCALAR(RTL_altitude_cm,        "ALT_HOLD_RTL",   ALT_HOLD_HOME_CM),
@@ -739,6 +758,15 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Values: 0:Disabled,1:Enabled
     // @User: Advanced
     GSCALAR(hil_servos,            "HIL_SERVOS",      0),
+
+    // @Param: HIL_ERR_LIMIT
+    // @DisplayName: Limit of error in HIL attitude before reset
+    // @Description: This controls the maximum error in degrees on any axis before HIL will reset the DCM attitude to match the HIL_STATE attitude. This limit will prevent poor timing on HIL from causing a major attitude error. If the value is zero then no limit applies.
+    // @Units: degrees
+    // @Range: 0 90
+    // @Increment: 0.1
+    // @User: Advanced
+    GSCALAR(hil_err_limit,         "HIL_ERR_LIMIT",   5),
 #endif
 
     // barometer ground calibration. The GND_ prefix is chosen for
@@ -753,9 +781,17 @@ const AP_Param::Info var_info[] PROGMEM = {
     GOBJECT(camera,                  "CAM_", AP_Camera),
 #endif
 
+    // @Group: ARMING_
+    // @Path: ../libraries/AP_Arming/AP_Arming.cpp
+    GOBJECT(arming,                 "ARMING_", AP_Arming),
+
     // @Group: RELAY_
     // @Path: ../libraries/AP_Relay/AP_Relay.cpp
     GOBJECT(relay,                  "RELAY_", AP_Relay),
+
+    // @Group: SONAR_
+    // @Path: ../libraries/AP_RangeFinder/AP_RangeFinder_analog.cpp
+    GOBJECT(sonar,                  "SONAR_", AP_RangeFinder_analog),
 
     // RC channel
     //-----------
@@ -845,11 +881,17 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Group: SR0_
     // @Path: GCS_Mavlink.pde
-    GOBJECT(gcs0,                                   "SR0_",     GCS_MAVLINK),
+    GOBJECTN(gcs[0], gcs0,        "SR0_",     GCS_MAVLINK),
 
-    // @Group: SR3_
+    // @Group: SR1_
     // @Path: GCS_Mavlink.pde
-    GOBJECT(gcs3,                                   "SR3_",     GCS_MAVLINK),
+    GOBJECTN(gcs[1],  gcs1,       "SR1_",     GCS_MAVLINK),
+
+#if MAVLINK_COMM_NUM_BUFFERS > 2
+    // @Group: SR2_
+    // @Path: GCS_Mavlink.pde
+    GOBJECTN(gcs[2],  gcs2,       "SR2_",     GCS_MAVLINK),
+#endif
 
     // @Group: INS_
     // @Path: ../libraries/AP_InertialSensor/AP_InertialSensor.cpp

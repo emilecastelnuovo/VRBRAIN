@@ -41,7 +41,9 @@ static void init_rc_out()
 {
     channel_roll->enable_out();
     channel_pitch->enable_out();
-    channel_throttle->enable_out();
+    if (arming.arming_required() != AP_Arming::YES_ZERO_PWM) {
+        channel_throttle->enable_out();
+    }
     channel_rudder->enable_out();
     enable_aux_servos();
 
@@ -62,29 +64,69 @@ static void init_rc_out()
 #endif
 }
 
-static void init_rc_default()
+// check for pilot input on rudder stick for arming
+static void rudder_arm_check() 
 {
-    hal.rcout->enable_ch(CH_1);
-    hal.rcout->enable_ch(CH_2);
-    hal.rcout->enable_ch(CH_3);
-    hal.rcout->enable_ch(CH_4);
-    enable_aux_servos();
+    //TODO: ensure rudder arming disallowed during radio calibration
 
-    // Initialization of servo outputs
-    hal.rcout->write(CH_1,   1500);
-    hal.rcout->write(CH_2,   1500);
-    hal.rcout->write(CH_3,   1000);
-    hal.rcout->write(CH_4,   1500);
+    //TODO: waggle ailerons and rudder and beep after rudder arming
+    
+    static uint32_t rudder_arm_timer;
 
-    hal.rcout->write(CH_5,   1000);
-    hal.rcout->write(CH_6,   1000);
-    hal.rcout->write(CH_7,   1000);
-    hal.rcout->write(CH_8,   1000);
+    if (arming.is_armed()) {
+        //already armed, no need to run remainder of this function
+        rudder_arm_timer = 0;
+        return;
+    } 
 
+    if (! arming.rudder_arming_enabled()) {
+        //parameter disallows rudder arming
+        return;
+    }
+
+    //if throttle is not down, then pilot cannot rudder arm
+    if (g.rc_3.control_in > 0) {
+        rudder_arm_timer = 0;
+        return;
+    }
+
+    //if not in a 'manual' mode then disallow rudder arming
+    if (auto_throttle_mode ) {
+        rudder_arm_timer = 0;
+        return;      
+    }
+
+    // full right rudder starts arming counter
+    if (g.rc_4.control_in > 4000) {
+        uint32_t now = millis();
+
+        if (rudder_arm_timer == 0 || 
+            now - rudder_arm_timer < 3000) {
+
+            if (rudder_arm_timer == 0) rudder_arm_timer = now;
+        } else {
+            //time to arm!
+            if (arming.arm(AP_Arming::RUDDER)) {
+                channel_throttle->enable_out();                        
+                //only log if arming was successful
+                Log_Arm_Disarm();
+            }                
+        }
+    } else { 
+        // not at full right rudder
+        rudder_arm_timer = 0;
+    }
 }
 
 static void read_radio()
 {
+    if (!hal.rcin->valid_channels()) {
+        control_failsafe(channel_throttle->radio_in);
+        return;
+    }
+
+    failsafe.last_valid_rc_ms = hal.scheduler->millis();
+
     elevon.ch1_temp = channel_roll->read();
     elevon.ch2_temp = channel_pitch->read();
     uint16_t pwm_roll, pwm_pitch;
@@ -131,6 +173,8 @@ static void read_radio()
         airspeed_nudge_cm = 0;
         throttle_nudge = 0;
     }
+
+    rudder_arm_check();
 }
 
 static void control_failsafe(uint16_t pwm)
@@ -250,6 +294,10 @@ static bool throttle_failsafe_level(void)
 {
     if (!g.throttle_fs_enabled) {
         return false;
+    }
+    if (hal.scheduler->millis() - failsafe.last_valid_rc_ms > 2000) {
+        // we haven't had a valid RC frame for 2 seconds
+        return true;
     }
     if (channel_throttle->get_reverse()) {
         return channel_throttle->radio_in >= g.throttle_fs_value;
