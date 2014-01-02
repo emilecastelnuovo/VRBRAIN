@@ -10,7 +10,6 @@ using namespace VRBRAIN;
 static int outPin[VRBRAIN_MAX_OUTPUT_CHANNELS];
 
 
-
 static inline long map(long value, long fromStart, long fromEnd,
                 long toStart, long toEnd) {
     return (value - fromStart) * (toEnd - toStart) / (fromEnd - fromStart) +
@@ -104,14 +103,24 @@ void VRBRAINRCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
     if ((chmask & ( _BV(CH_4) | _BV(CH_5) | _BV(CH_6))) != 0) {
 	TIM3->ARR = icr;
     }
-
-    if ((chmask & ( _BV(CH_7) | _BV(CH_8))) != 0) {
-	TIM4->ARR = icr;
+    if(g_ext_mag_detect) {
+	if(g_is_ppmsum) {
+	    if ((chmask & ( _BV(CH_7) | _BV(CH_8) | _BV(CH_9) | _BV(CH_10))) != 0) {
+		TIM8->ARR = icr;
+	    }
+	}
+    } else {
+	if ((chmask & ( _BV(CH_7) | _BV(CH_8))) != 0) {
+	    TIM4->ARR = icr;
+	}
+	if (g_is_ppmsum) {
+	    if ((chmask & ( _BV(CH_9) | _BV(CH_10) | _BV(CH_11) | _BV(CH_12))) != 0) {
+		TIM8->ARR = icr;
+	    }
+	}
     }
 
-    if ((chmask & ( _BV(CH_9) | _BV(CH_10) | _BV(CH_11) | _BV(CH_12))) != 0) {
-	TIM8->ARR = icr;
-    }
+
 
 }
 
@@ -148,16 +157,55 @@ uint16_t VRBRAINRCOutput::get_freq(uint8_t ch) {
 }
 
 void VRBRAINRCOutput::enable_ch(uint8_t ch)
-{}
+{
+    switch(ch)
+	{
+	case 0: (TIMER2->regs)->CCER |= (uint16_t)TIM_CCER_CC2E; break; // CH_1 : OC1B
+	case 1: (TIMER2->regs)->CCER |= (uint16_t)TIM_CCER_CC3E; break; // CH_2 : OC1A
+	case 2: (TIMER2->regs)->CCER |= (uint16_t)TIM_CCER_CC4E; break; // CH_3 : OC4C
+	case 3: (TIMER3->regs)->CCER |= (uint16_t)TIM_CCER_CC2E; break; // CH_4 : OC4B
+	case 4: (TIMER3->regs)->CCER |= (uint16_t)TIM_CCER_CC3E; break; // CH_5 : OC4A
+	case 5: (TIMER3->regs)->CCER |= (uint16_t)TIM_CCER_CC4E; break; // CH_6 : OC3C
+	case 6: (TIMER4->regs)->CCER |= (uint16_t)TIM_CCER_CC3E; break; // CH_7 : OC3B
+	case 7: (TIMER4->regs)->CCER |= (uint16_t)TIM_CCER_CC4E; break; // CH_8 : OC3A
+	//case 9: (TIMER8->regs)->CCER &= (uint16_t)~TIM_CCER_CC1E; break; // CH_10 : OC5B
+	//case 10: (TIMER8->regs)->CCER &= (uint16_t)~TIM_CCER_CC1E; break; // CH_11 : OC5C
+	}
+}
 
 void VRBRAINRCOutput::enable_mask(uint32_t chmask)
-{}
+{
+    for (int i = 0; i < 32; i++) {
+        uint32_t c = chmask >> i;
+        if (c & 1) {
+            enable_ch(i);
+        }
+    }
+}
 
 void VRBRAINRCOutput::disable_ch(uint8_t ch)
-{}
+{
+    switch(ch)
+	{
+	case 0: (TIMER2->regs)->CCER &= (uint16_t)~TIM_CCER_CC2E; break; // CH_1 : OC1B
+	case 1: (TIMER2->regs)->CCER &= (uint16_t)~TIM_CCER_CC3E; break; // CH_2 : OC1A
+	case 2: (TIMER2->regs)->CCER &= (uint16_t)~TIM_CCER_CC4E; break; // CH_3 : OC4C
+	case 3: (TIMER3->regs)->CCER &= (uint16_t)~TIM_CCER_CC2E; break; // CH_4 : OC4B
+	case 4: (TIMER3->regs)->CCER &= (uint16_t)~TIM_CCER_CC3E; break; // CH_5 : OC4A
+	case 5: (TIMER3->regs)->CCER &= (uint16_t)~TIM_CCER_CC4E; break; // CH_6 : OC3C
+	case 6: (TIMER4->regs)->CCER &= (uint16_t)~TIM_CCER_CC3E; break; // CH_7 : OC3B
+	case 7: (TIMER4->regs)->CCER &= (uint16_t)~TIM_CCER_CC4E; break; // CH_8 : OC3A
+	}
+}
 
 void VRBRAINRCOutput::disable_mask(uint32_t chmask)
-{}
+{
+    for (int i = 0; i < 32; i++) {
+        if ((chmask >> i) & 1) {
+            disable_ch(i);
+        }
+    }
+}
 
 /* constrain pwm to be between min and max pulsewidth. */
 static inline uint16_t constrain_period(uint16_t p) {
