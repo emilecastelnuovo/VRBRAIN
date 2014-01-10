@@ -280,6 +280,7 @@ bool AP_InertialSensor_MPU6000_Ext::update( void )
     _accel_sum.zero();
     _gyro_sum.zero();
     _temp[1] = _temp_sum; 
+    _temp_sum = 0;
     _sum_count = 0;
     hal.scheduler->resume_timer_procs();
 
@@ -296,7 +297,7 @@ bool AP_InertialSensor_MPU6000_Ext::update( void )
     _accel[1].z *= accel_scale.z;
     _accel[1] -= _accel_offset[1];
 
-    _temp[1]    /= _num_samples;
+    _temp[1]    = _temp_to_celsius(_temp[1] / _num_samples);
 
     if (_last_filter_hz != _mpu6000_filter) {
         if (_spi_sem->take(10)) {
