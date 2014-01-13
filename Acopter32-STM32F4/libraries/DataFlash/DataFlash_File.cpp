@@ -142,7 +142,7 @@ void DataFlash_File::EraseAll()
 /* Write a block of data at current offset */
 void DataFlash_File::WriteBlock(const void *pBuffer, uint16_t size)
 {
-    if (_write_fd == -1 || !_initialised) {
+    if (_write_fd == -1 || !_initialised || !_writes_enabled) {
         return;
     }
     uint16_t _head;
@@ -531,8 +531,11 @@ void DataFlash_File::_io_timer(void)
         _write_fd = -1;
         _initialised = false;
     } else {
-        ::fsync(_write_fd);
         BUF_ADVANCEHEAD(_writebuf, nwritten);
+        if (hal.scheduler->millis() - last_fsync_ms > 10000) {
+            last_fsync_ms = hal.scheduler->millis();
+            ::fsync(_write_fd);            
+        }
     }
 }
 
