@@ -18,10 +18,14 @@ static void init_sonar(void)
 }
  #endif
 
-static void init_barometer(void)
+static void init_barometer(bool full_calibration)
 {
     gcs_send_text_P(SEVERITY_LOW, PSTR("Calibrating barometer"));
-    barometer.calibrate();
+    if (full_calibration) {
+        barometer.calibrate();
+    }else{
+        barometer.update_calibration();
+    }
     gcs_send_text_P(SEVERITY_LOW, PSTR("barometer calibration complete"));
 }
 
@@ -42,7 +46,7 @@ static int16_t read_sonar(void)
         return 0;
     }
 
-    int32_t temp_alt = sonar->read();
+    int16_t temp_alt = sonar->read();
 
     if (temp_alt >= sonar->min_distance && temp_alt <= sonar->max_distance * SONAR_RELIABLE_DISTANCE_PCT) {
         if ( sonar_alt_health < SONAR_ALT_HEALTH_MAX ) {
@@ -70,16 +74,6 @@ static int16_t read_sonar(void)
 
 static void init_compass()
 {
-/*
-    if (compass_ext.init() && compass_ext.read()){
-	cliSerial->println_P(PSTR("External Compass Detected!"));
-	compass = &compass_ext;
-    } else if(compass_int.init() && compass_int.read())  {
-	compass = &compass_int;
-	cliSerial->println_P(PSTR("Internal Compass Detected!"));
-	//compass = compass_int;
-    }else{
-    */
     if (!compass.init() || !compass.read()) {
         // make sure we don't pass a broken compass to DCM
         cliSerial->println_P(PSTR("COMPASS INIT ERROR"));

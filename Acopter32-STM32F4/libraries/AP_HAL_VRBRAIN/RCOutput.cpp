@@ -173,16 +173,6 @@ void VRBRAINRCOutput::enable_ch(uint8_t ch)
 	}
 }
 
-void VRBRAINRCOutput::enable_mask(uint32_t chmask)
-{
-    for (int i = 0; i < 32; i++) {
-        uint32_t c = chmask >> i;
-        if (c & 1) {
-            enable_ch(i);
-        }
-    }
-}
-
 void VRBRAINRCOutput::disable_ch(uint8_t ch)
 {
     switch(ch)
@@ -198,15 +188,15 @@ void VRBRAINRCOutput::disable_ch(uint8_t ch)
 	}
 }
 
-void VRBRAINRCOutput::disable_mask(uint32_t chmask)
+
+void VRBRAINRCOutput::set_safety_pwm(uint32_t chmask, uint16_t period_us)
 {
-    for (int i = 0; i < 32; i++) {
-        if ((chmask >> i) & 1) {
-            disable_ch(i);
+    for (uint8_t i=0; i< _num_motors; i++) {
+        if ((1UL<<i) & chmask) {
+            write(i, period_us);
         }
     }
 }
-
 /* constrain pwm to be between min and max pulsewidth. */
 static inline uint16_t constrain_period(uint16_t p) {
     if (p > RC_INPUT_MAX_PULSEWIDTH) return RC_INPUT_MAX_PULSEWIDTH;

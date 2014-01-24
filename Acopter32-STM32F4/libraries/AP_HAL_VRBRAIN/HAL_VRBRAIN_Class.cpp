@@ -51,7 +51,7 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
       &spiDeviceManager,
       &analogIn,
       &storageDriver,
-      &uartCDriver,
+      &uartADriver,
       &gpioDriver,
       &rcinDriver,
       &rcoutDriver,
