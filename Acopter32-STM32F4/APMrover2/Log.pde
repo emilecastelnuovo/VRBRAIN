@@ -396,6 +396,29 @@ static void Log_Write_Mode()
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
+struct PACKED log_SonarDepth {
+    LOG_PACKET_HEADER;
+    uint32_t time_ms;
+    uint32_t gps_time;
+    uint16_t gps_week;
+    float sonar_depth;
+    float sonar_temp;
+};
+
+// Write a sonar packet
+static void Log_Write_SonarDepth()
+{
+
+    struct log_SonarDepth pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_SONARDEPTH_MSG),
+        time_ms         : millis(),
+        gps_time        : g_gps->time_week_ms,
+        gps_week        : g_gps->time_week,
+        sonar_depth     : Depth,
+        sonar_temp      : Temp
+    };
+    DataFlash.WriteBlock(&pkt, sizeof(pkt));
+}
 
 struct PACKED log_Sonar {
     LOG_PACKET_HEADER;
@@ -568,7 +591,9 @@ static void Log_Read(uint16_t log_num, uint16_t start_page, uint16_t end_page)
 // start a new log
 static void start_logging() 
 {
+    in_mavlink_delay = true;
     DataFlash.StartNewLog();
+    in_mavlink_delay = false;
     DataFlash.Log_Write_Message_P(PSTR(FIRMWARE_STRING));
 
     // write system identifier as well if available
@@ -589,6 +614,7 @@ static void Log_Write_Performance() {}
 static int8_t process_logs(uint8_t argc, const Menu::arg *argv) { return 0; }
 static void Log_Write_Control_Tuning() {}
 static void Log_Write_Sonar() {}
+static void Log_Write_SonarDepth() {}
 static void Log_Write_Mode() {}
 static void Log_Write_Attitude() {}
 static void Log_Write_Compass() {}

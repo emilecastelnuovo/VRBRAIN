@@ -13,6 +13,7 @@ static int8_t	test_ins(uint8_t argc, 			const Menu::arg *argv);
 static int8_t	test_relay(uint8_t argc,	 	const Menu::arg *argv);
 static int8_t	test_wp(uint8_t argc, 			const Menu::arg *argv);
 static int8_t	test_sonar(uint8_t argc, 	const Menu::arg *argv);
+static int8_t	test_sonar_depth(uint8_t argc, 	const Menu::arg *argv);
 static int8_t	test_mag(uint8_t argc, 			const Menu::arg *argv);
 static int8_t	test_modeswitch(uint8_t argc, 		const Menu::arg *argv);
 static int8_t	test_logging(uint8_t argc, 		const Menu::arg *argv);
@@ -38,6 +39,7 @@ static const struct Menu::command test_menu_commands[] PROGMEM = {
 	{"gps",			test_gps},
 	{"ins",			test_ins},
 	{"sonartest",	test_sonar},
+	{"sonardepth",	test_sonar_depth},
 	{"compass",		test_mag},
 	{"logging",		test_logging},
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
@@ -217,14 +219,14 @@ test_relay(uint8_t argc, const Menu::arg *argv)
 
 	while(1){
 		cliSerial->printf_P(PSTR("Relay on\n"));
-		relay.on();
+		relay.on(0);
 		delay(3000);
 		if(cliSerial->available() > 0){
 			return (0);
 		}
 
 		cliSerial->printf_P(PSTR("Relay off\n"));
-		relay.off();
+		relay.off(0);
 		delay(3000);
 		if(cliSerial->available() > 0){
 			return (0);
@@ -502,6 +504,36 @@ test_sonar(uint8_t argc, const Menu::arg *argv)
             voltage2_min = voltage2_max = 0.0f;
             sonar_dist_cm_min = sonar_dist_cm_max = 0.0f;
             sonar2_dist_cm_min = sonar2_dist_cm_max = 0.0f;
+            last_print = now;
+        }
+        if (cliSerial->available() > 0) {
+            break;
+	    }
+    }
+    return (0);
+}
+
+static int8_t
+test_sonar_depth(uint8_t argc, const Menu::arg *argv)
+{
+    print_hit_enter();
+
+    uint32_t last_print = 0;
+
+	while (true) {
+        delay(200);
+
+        read_Sonar();
+
+        uint32_t now = millis();
+
+        float read_depth = Depth;
+        float read_temp = Temp;
+
+        if (now - last_print >= 500) {
+            cliSerial->printf_P(PSTR("Depth=%.1fcm Temp=%.2f\n"),
+        	    read_depth,
+        	    read_temp);
             last_print = now;
         }
         if (cliSerial->available() > 0) {

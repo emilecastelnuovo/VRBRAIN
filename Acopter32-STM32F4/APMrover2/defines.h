@@ -96,6 +96,7 @@ enum mode {
 #define LOG_CAMERA_MSG          0x0B
 #define LOG_COMPASS2_MSG        0x0C
 #define LOG_STEERING_MSG        0x0D
+#define LOG_SONARDEPTH_MSG        0x0E
 
 #define TYPE_AIRSTART_MSG		0x00
 #define TYPE_GROUNDSTART_MSG	0x01
@@ -116,6 +117,8 @@ enum mode {
 #define MASK_LOG_CAMERA   		(1<<12)
 #define MASK_LOG_STEERING  		(1<<13)
 #define MASK_LOG_RC     		(1<<14)
+#define MASK_LOG_SONARDEPTH   		(1<<15)
+#define MASK_LOG_WHEN_DISARMED  (1<<30)
 
 // Waypoint Modes
 // ----------------
