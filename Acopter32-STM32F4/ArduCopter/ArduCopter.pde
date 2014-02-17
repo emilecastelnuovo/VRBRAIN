@@ -797,51 +797,51 @@ AP_Param param_loader(var_info, WP_START_BYTE);
   
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-    { rc_loop,               5,     10 },
-    { throttle_loop,         10,     45 },
-    { update_GPS,            10,     90 },
-    { update_batt_compass,  50,     72 },
-    { read_aux_switches,    50,      5 },
-    { arm_motors_check,     50,      1 },
-    { auto_trim,            50,     14 },
-    { update_altitude,      50,    100 },
-    { run_nav_updates,      50,     80 },
-    { update_thr_cruise,    50,     10 },
-    { three_hz_loop,       166,      9 },
-    { compass_accumulate,    10,     42 },
-    { barometer_accumulate,  10,     25 },
+    { rc_loop,               4,     50 },
+    { throttle_loop,         8,     100 },
+    { update_GPS,            8,     180 },
+    { update_batt_compass,  40,     72 },
+    { read_aux_switches,    40,      100 },
+    { arm_motors_check,     40,      100 },
+    { auto_trim,            40,     140 },
+    { update_altitude,      40,    100 },
+    { run_nav_updates,      40,     80 },
+    { update_thr_cruise,    40,     10 },
+    { three_hz_loop,       133,      9 },
+    { compass_accumulate,    8,     250 },
+    { barometer_accumulate,  8,     25 },
 #if FRAME_CONFIG == HELI_FRAME
-    { check_dynamic_flight,  10,     10 },
+    { check_dynamic_flight,  8,     10 },
 #endif
-    { update_notify,         10,     10 },
-    { one_hz_loop,         500,     42 },
-    { crash_check,          50,      2 },
-    { gcs_check_input,	     10,    550 },
-    { gcs_send_heartbeat,  500,    150 },
-    { gcs_send_deferred,     10,    720 },
-    { gcs_data_stream_send,  10,    950 },
+    { update_notify,         8,     15 },
+    { one_hz_loop,         400,     42 },
+    { crash_check,          40,      2 },
+    { gcs_check_input,	     8,    550 },
+    { gcs_send_heartbeat,  400,    150 },
+    { gcs_send_deferred,     8,    720 },
+    { gcs_data_stream_send,  8,    950 },
 #if COPTER_LEDS == ENABLED
-    { update_copter_leds,   50,      5 },
+    { update_copter_leds,   40,      5 },
 #endif
-    { update_mount,          10,     45 },
-    { ten_hz_logging_loop,  50,     30 },
-    { fifty_hz_logging_loop, 10,     22 },
-    { perf_update,        5000,     20 },
-    { read_receiver_rssi,   50,      5 },
+    { update_mount,          8,     45 },
+    { ten_hz_logging_loop,  40,     30 },
+    { fifty_hz_logging_loop, 8,     22 },
+    { perf_update,        4000,     20 },
+    { read_receiver_rssi,   40,      5 },
 #ifdef USERHOOK_FASTLOOP
-    { userhook_FastLoop,     5,     10 },
+    { userhook_FastLoop,     4,     10 },
 #endif
 #ifdef USERHOOK_50HZLOOP
-    { userhook_50Hz,         10,     10 },
+    { userhook_50Hz,         8,     10 },
 #endif
 #ifdef USERHOOK_MEDIUMLOOP
-    { userhook_MediumLoop,  50,     10 },
+    { userhook_MediumLoop,  40,     10 },
 #endif
 #ifdef USERHOOK_SLOWLOOP
-    { userhook_SlowLoop,    150,    10 },
+    { userhook_SlowLoop,    120,    10 },
 #endif
 #ifdef USERHOOK_SUPERSLOWLOOP
-    { userhook_SuperSlowLoop,500,   10 },
+    { userhook_SuperSlowLoop,400,   10 },
 #endif
 };
 #else
