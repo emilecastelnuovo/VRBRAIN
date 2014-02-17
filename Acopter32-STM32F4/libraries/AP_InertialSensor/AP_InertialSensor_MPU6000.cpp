@@ -659,7 +659,7 @@ bool AP_InertialSensor_MPU6000::_sample_available()
 {
     _poll_data();
 #ifdef ENHANCED
-    return (_sum_count >> _sample_shift) > 1;
+    return (_sum_count >> _sample_shift) > 9;
 #else
     return (_sum_count >> _sample_shift) > 0;
 #endif
