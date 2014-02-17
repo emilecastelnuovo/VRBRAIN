@@ -206,6 +206,7 @@ static int8_t
 test_ins(uint8_t argc, const Menu::arg *argv)
 {
     Vector3f gyro, accel;
+    float temp;
     print_hit_enter();
     cliSerial->printf_P(PSTR("INS\n"));
     delay(1000);

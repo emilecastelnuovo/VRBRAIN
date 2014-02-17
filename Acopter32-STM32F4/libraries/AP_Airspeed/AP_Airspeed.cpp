@@ -145,7 +145,7 @@ bool AP_Airspeed::get_temperature(float &temperature)
         return false;
     }
     if (_pin == AP_AIRSPEED_I2C_PIN) {
-        return digital.get_temperature(temperature);
+        //return digital.get_temperature(temperature);
     }
     return false;
 }

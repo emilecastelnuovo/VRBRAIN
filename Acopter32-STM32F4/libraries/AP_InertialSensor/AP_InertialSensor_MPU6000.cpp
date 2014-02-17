@@ -558,11 +558,21 @@ bool AP_InertialSensor_MPU6000::_hardware_init(Sample_rate sample_rate)
         _sample_shift = 0;
         break;
     case RATE_200HZ:
-    default:
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 #ifdef ENHANCED
 	_sample_rate = MPUREG_SMPLRT_200HZ;
 	_sample_time_usec = 5000;
+#endif
+#endif
+        default_filter = BITS_DLPF_CFG_20HZ;
+        _sample_shift = 0;
+        break;
+    case RATE_400HZ:
+    default:
+#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#ifdef ENHANCED
+	_sample_rate = MPUREG_SMPLRT_500HZ;
+	_sample_time_usec = 2000;
 #endif
 #endif
         default_filter = BITS_DLPF_CFG_20HZ;
@@ -649,7 +659,7 @@ bool AP_InertialSensor_MPU6000::_sample_available()
 {
     _poll_data();
 #ifdef ENHANCED
-    return (_sum_count >> _sample_shift) > 9;
+    return (_sum_count >> _sample_shift) > 1;
 #else
     return (_sum_count >> _sample_shift) > 0;
 #endif
@@ -674,7 +684,7 @@ void AP_InertialSensor_MPU6000::_dump_registers(void)
 
 
 // get_delta_time returns the time period in seconds overwhich the sensor data was collected
-float AP_InertialSensor_MPU6000::get_delta_time() 
+float AP_InertialSensor_MPU6000::get_delta_time() const
 {
 #if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 #ifdef ENHANCED

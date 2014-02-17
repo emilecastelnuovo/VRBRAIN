@@ -165,7 +165,7 @@ private:
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     AP_Airspeed_PX4    digital;
 #else
-    AP_Airspeed_I2C    digital;
+    //AP_Airspeed_I2C    digital;
 #endif
 };
 

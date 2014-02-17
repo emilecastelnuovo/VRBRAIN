@@ -43,6 +43,7 @@ public:
         RATE_50HZ,
         RATE_100HZ,
         RATE_200HZ,
+        RATE_400HZ,
         RATE_500HZ,
         RATE_1000HZ
     };
@@ -141,7 +142,7 @@ public:
     /* get_delta_time returns the time period in seconds
      * overwhich the sensor data was collected
      */
-    virtual float get_delta_time() = 0;
+    virtual float get_delta_time() const = 0;
 
     // return the maximum gyro drift rate in radians/s/s. This
     // depends on what gyro chips are being used
