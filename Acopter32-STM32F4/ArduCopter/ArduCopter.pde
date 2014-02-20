@@ -186,7 +186,8 @@ static AP_Scheduler scheduler;
 // AP_Notify instance
 static AP_Notify notify;
 
-
+// used to detect MAVLink acks from GCS to stop compassmot
+static uint8_t command_ack_counter;
 
 ////////////////////////////////////////////////////////////////////////////////
 // prototypes
@@ -413,6 +414,7 @@ static union {
         uint8_t CH8_flag            : 2; // 11,12   // ch8 aux switch : 0 is low or false, 1 is center or true, 2 is high
         uint8_t usb_connected       : 1; // 13      // true if APM is powered from USB connection
         uint8_t rc_receiver_present : 1; // 14  // true if we have an rc receiver present (i.e. if we've ever received an update
+        uint8_t compass_mot         : 1; // 15  // true if we are currently performing compassmot calibration
     };
     uint16_t value;
 } ap;
@@ -644,8 +646,8 @@ static uint32_t throttle_integrator;
 ////////////////////////////////////////////////////////////////////////////////
 // auto flight mode's yaw mode
 static uint8_t auto_yaw_mode = AUTO_YAW_LOOK_AT_NEXT_WP;
-// Yaw will point at this location if yaw_mode is set to YAW_LOOK_AT_LOCATION
-static Vector3f yaw_look_at_WP;
+// Yaw will point at this location if auto_yaw_mode is set to AUTO_YAW_ROI
+static Vector3f roi_WP;
 // bearing from current location to the yaw_look_at_WP
 static float yaw_look_at_WP_bearing;
 // yaw used for YAW_LOOK_AT_HEADING yaw_mode
@@ -797,25 +799,25 @@ AP_Param param_loader(var_info, WP_START_BYTE);
   
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-    { rc_loop,               4,     50 },
-    { throttle_loop,         8,     100 },
-    { update_GPS,            8,     180 },
-    { update_batt_compass,  40,     72 },
-    { read_aux_switches,    40,      100 },
-    { arm_motors_check,     40,      100 },
+    { rc_loop,               4,     100 },
+    { throttle_loop,         8,     450 },
+    { update_GPS,            8,     900 },
+    { update_batt_compass,  40,     720 },
+    { read_aux_switches,    40,      50 },
+    { arm_motors_check,     40,      10 },
     { auto_trim,            40,     140 },
-    { update_altitude,      40,    100 },
-    { run_nav_updates,      40,     80 },
-    { update_thr_cruise,    40,     10 },
-    { three_hz_loop,       133,      9 },
-    { compass_accumulate,    8,     250 },
-    { barometer_accumulate,  8,     25 },
+    { update_altitude,      40,    1000 },
+    { run_nav_updates,      40,     800 },
+    { update_thr_cruise,    40,     100 },
+    { three_hz_loop,       133,      90 },
+    { compass_accumulate,    8,     420 },
+    { barometer_accumulate,  8,     250 },
 #if FRAME_CONFIG == HELI_FRAME
-    { check_dynamic_flight,  8,     10 },
+    { check_dynamic_flight,  8,     100 },
 #endif
-    { update_notify,         8,     15 },
-    { one_hz_loop,         400,     42 },
-    { crash_check,          40,      2 },
+    { update_notify,         8,     100 },
+    { one_hz_loop,         400,     420 },
+    { crash_check,          40,      20 },
     { gcs_check_input,	     8,    550 },
     { gcs_send_heartbeat,  400,    150 },
     { gcs_send_deferred,     8,    720 },
@@ -823,11 +825,11 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 #if COPTER_LEDS == ENABLED
     { update_copter_leds,   40,      5 },
 #endif
-    { update_mount,          8,     45 },
-    { ten_hz_logging_loop,  40,     30 },
-    { fifty_hz_logging_loop, 8,     22 },
-    { perf_update,        4000,     20 },
-    { read_receiver_rssi,   40,      5 },
+    { update_mount,          8,     450 },
+    { ten_hz_logging_loop,  40,     300 },
+    { fifty_hz_logging_loop, 8,     220 },
+    { perf_update,        4000,     200 },
+    { read_receiver_rssi,   40,      50 },
 #ifdef USERHOOK_FASTLOOP
     { userhook_FastLoop,     4,     10 },
 #endif

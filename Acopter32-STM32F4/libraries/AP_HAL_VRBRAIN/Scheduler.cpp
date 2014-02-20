@@ -36,7 +36,7 @@ void VRBRAINScheduler::init(void* machtnichts)
     timer_set_count(TIMER7,0);
     timer_set_reload(TIMER7,period);
     timer_attach_interrupt(TIMER7, TIMER_UPDATE_INTERRUPT, _timer_isr_event);
-    NVIC_SetPriority(TIM7_IRQn,5);
+    NVIC_SetPriority(TIM7_IRQn,0);
     timer_resume(TIMER7);
 
     //systick_attach_callback(_timer_isr_event);

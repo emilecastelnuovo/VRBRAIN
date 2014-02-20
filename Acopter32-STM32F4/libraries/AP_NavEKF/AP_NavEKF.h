@@ -82,10 +82,6 @@ public:
     // This method can only be used when the vehicle is static
     void InitialiseFilterBootstrap(void);
 
-    // inhibits position and velocity attitude corrections when set to true
-    // setting to true has same effect as ahrs.set_correct_centrifugal(false)
-    void SetStaticMode(bool setting);
-
     // Update Filter States - this should be called whenever new IMU data is available
     void UpdateFilter(void);
 
@@ -163,6 +159,9 @@ private:
     // force symmetry on the state covariance matrix
     void ForceSymmetry();
 
+    // copy covariances across from covariance prediction calculation and fix numerical errors
+    void CopyAndFixCovariances();
+
     // constrain variances (diagonal terms) on the state covariance matrix
     void ConstrainVariances();
 
@@ -189,6 +188,9 @@ private:
 
     // store states along with system time stamp in msces
     void StoreStates(void);
+
+    // Reset the stored state history and store the current state
+    void StoreStatesReset(void);
 
     // recall state vector stored at closest time to the one specified by msec
     void RecallStates(Vector22 &statesForFusion, uint32_t msec);
@@ -250,6 +252,11 @@ private:
     // reset the vertical position state using the last height measurement
     void ResetHeight(void);
 
+    // return true if we should use the airspeed sensor
+    bool useAirspeed(void) const;
+
+    // check if static mode has been demanded by vehicle code
+    bool static_mode_demanded(void) const;
 
 private:
     // EKF Mavlink Tuneable Parameters
@@ -296,7 +303,6 @@ private:
     // Variables
     uint8_t skipCounter;            // counter used to skip position and height corrections to achieve _skipRatio
     bool statesInitialised;         // boolean true when filter states have been initialised
-    bool staticModeDemanded;        // boolean true when staticMode has been demanded externally.
     bool velHealth;                 // boolean true if velocity measurements have failed innovation consistency check
     bool posHealth;                 // boolean true if position measurements have failed innovation consistency check
     bool hgtHealth;                 // boolean true if height measurements have failed innovation consistency check
@@ -324,7 +330,6 @@ private:
     ftype dt;                       // time lapsed since the last covariance prediction (sec)
     ftype hgtRate;                  // state for rate of change of height filter
     bool onGround;                  // boolean true when the flight vehicle is on the ground (not flying)
-    const bool useAirspeed;         // boolean true if airspeed data is being used
     const bool useCompass;          // boolean true if magnetometer data is being used
     Vector6 innovVelPos;            // innovation output for a group of measurements
     Vector6 varInnovVelPos;         // innovation variance output for a group of measurements
@@ -361,6 +366,7 @@ private:
     uint32_t HGTmsecPrev;           // time stamp of last height measurement fusion step
     const bool fuseMeNow;           // boolean to force fusion whenever data arrives
     bool staticMode;                // boolean to force position and velocity measurements to zero for pre-arm or bench testing
+    bool prevStaticMode;            // value of static mode from last update
     uint32_t lastMagUpdate;         // last time compass was updated
     Vector3f velDotNED;             // rate of change of velocity in NED frame
     Vector3f velDotNEDfilt;         // low pass filtered velDotNED

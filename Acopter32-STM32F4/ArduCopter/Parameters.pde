@@ -345,7 +345,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: LOG_BITMASK
     // @DisplayName: Log bitmask
     // @Description: 2 byte bitmap of log types to enable
-    // @Values: 0:Disabled,830:Default,894:Default+RCIN,958:Default+IMU,1854:Default+Motors,-6146:NearlyAll
+    // @Values: 830:Default,894:Default+RCIN,958:Default+IMU,1854:Default+Motors,-6146:NearlyAll,0:Disabled
     // @User: Standard
     GSCALAR(log_bitmask,    "LOG_BITMASK",          DEFAULT_LOG_BITMASK),
 
@@ -1050,6 +1050,7 @@ static void load_parameters(void)
     }
     // disable centrifugal force correction, it will be enabled as part of the arming process
     ahrs.set_correct_centrifugal(false);
+    ahrs.set_armed(false);
 
     // setup different AHRS gains for ArduCopter than the default
     // but allow users to override in their config

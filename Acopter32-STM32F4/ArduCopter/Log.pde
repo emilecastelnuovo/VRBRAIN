@@ -680,6 +680,11 @@ static void Log_Write_Error(uint8_t sub_system, uint8_t error_code)
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 }
 
+static void Log_Write_Baro(void)
+{
+    DataFlash.Log_Write_Baro(barometer);
+}
+
 static const struct LogStructure log_structure[] PROGMEM = {
     LOG_COMMON_STRUCTURES,
 #if AUTOTUNE == ENABLED

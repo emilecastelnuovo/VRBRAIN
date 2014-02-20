@@ -203,14 +203,13 @@ const AP_Param::GroupInfo NavEKF::var_info[] PROGMEM = {
 NavEKF::NavEKF(const AP_AHRS *ahrs, AP_Baro &baro) :
     _ahrs(ahrs),
     _baro(baro),
-    staticModeDemanded(true),   // staticMode demanded from outside
-    useAirspeed(true),          // activates fusion of compass data
     useCompass(true),           // activates fusion of airspeed data
     covTimeStepMax(0.07f),      // maximum time (sec) between covariance prediction updates
     covDelAngMax(0.05f),        // maximum delta angle between covariance prediction updates
     TASmsecMax(200),            // maximum allowed interval between airspeed measurement updates
     fuseMeNow(false),           // forces airspeed fusion to occur on the IMU frame that data arrives
-    staticMode(true)            // staticMode forces position and velocity fusion with zero values
+    staticMode(true),           // staticMode forces position and velocity fusion with zero values
+    prevStaticMode(true)        // staticMode from previous filter update
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     ,_perf_UpdateFilter(perf_alloc(PC_ELAPSED, "EKF_UpdateFilter")),
@@ -278,16 +277,13 @@ bool NavEKF::PositionDrifting(void) const
     return !posHealth;
 }
 
-void NavEKF::SetStaticMode(bool setting) {
-        staticModeDemanded = setting;
-}
-
 void NavEKF::ResetPosition(void)
 {
     if (staticMode) {
         states[7] = 0;
         states[8] = 0;
     } else if (_ahrs->get_gps()->status() >= GPS::GPS_OK_FIX_3D) {
+
         // read the GPS
         readGpsData();
         // write to state vector
@@ -393,15 +389,9 @@ void NavEKF::InitialiseFilterBootstrap(void)
     // body magnetic field vector with offsets removed
     Vector3f initMagXYZ;
 
-    // Take 50 readings at 20msec intervals and average
-    initAccVec.zero();
-    initMagXYZ.zero();
-    for (uint8_t i=1; i<=50; i++) {
-        initAccVec = initAccVec + _ahrs->get_ins().get_accel();
-        initMagXYZ = initMagXYZ + _ahrs->get_compass()->get_field() * 0.001f; // convert from Gauss to mGauss
-        hal.scheduler->delay(20);
-    }
-    initMagXYZ = initMagXYZ * 0.02f;
+    // we should average readings over several calls to this function 
+    initAccVec = _ahrs->get_ins().get_accel();
+    initMagXYZ = _ahrs->get_compass()->get_field() * 0.001f; // convert from Gauss to mGauss
 
     // Normalise the acceleration vector
     initAccVec.normalize();
@@ -492,6 +482,7 @@ void NavEKF::UpdateFilter()
         ResetVelocity();
         ResetPosition();
         ResetHeight();
+        StoreStatesReset();
         //Initialise IMU pre-processing states
         readIMUData();
         perf_end(_perf_UpdateFilter);
@@ -502,10 +493,19 @@ void NavEKF::UpdateFilter()
     OnGroundCheck();
 
     // Define rules used to set staticMode
-    if (onGround && staticModeDemanded) {
+    if (onGround && static_mode_demanded()) {
         staticMode = true;
     } else {
         staticMode = false;
+    }
+
+    // check to see if static mode has changed and reset states if it has
+    if (prevStaticMode != staticMode) {
+        ResetVelocity();
+        ResetPosition();
+        ResetHeight();
+        StoreStatesReset();
+        prevStaticMode = staticMode;
     }
 
     // Run the strapdown INS equations every IMU update
@@ -545,52 +545,65 @@ void NavEKF::SelectVelPosFusion()
     // Calculate ratio of VelPos fusion to state prediction setps
     uint8_t velPosFuseStepRatio = floor(dtVelPos/dtIMU + 0.5f);
 
-    // Command fusion of GPS measurements if new ones available or in static mode
-    readGpsData();
-    if (newDataGps||staticMode) {
-        fuseVelData = true;
-        fusePosData = true;
-        // Calculate the scale factor to be applied to the measurement variance to account for
-        // the fact we repeat fusion of the same measurement to provide a smoother output
-        gpsVarScaler = _msecGpsAvg/(1000.0f*dtVelPos);
-        // reset the counter used to skip updates so that we always fuse data on the frame data arrives
-        skipCounter = velPosFuseStepRatio;
-        // If a long time sinc last GPS update, then reset position and velocity
-        if ((hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeUseTAS && useAirspeed) || (hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeNoTAS && !useAirspeed)) {
-            if (!staticMode) {
-                ResetPosition();
-                ResetVelocity();
+    // Calculate the scale factor to be applied to the measurement variance to account for
+    // the fact we repeat fusion of the same measurement to provide a smoother output
+    gpsVarScaler = _msecGpsAvg/(1000.0f*dtVelPos);
+    // Calculate the scale factor to be applied to the measurement variance to account for
+    // the fact we repeat fusion of the same measurement to provide a smoother output
+    hgtVarScaler = _msecHgtAvg/(1000.0f*dtVelPos);
+
+    if (!staticMode) {
+        // Command fusion of GPS measurements if new ones available
+        readGpsData();
+        if (newDataGps) {
+            // reset data arrived flag
+            newDataGps = false;
+            // enable fusion
+            fuseVelData = true;
+            fusePosData = true;
+            // reset the counter used to schedule updates so that we always fuse data on the frame GPS data arrives
+            skipCounter = velPosFuseStepRatio;
+            // If a long time since last GPS update, then reset position and velocity and reset stored state history
+            if ((hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeUseTAS && useAirspeed()) || (hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeNoTAS && !useAirspeed())) {
+            ResetPosition();
+            ResetVelocity();
+            StoreStatesReset();
             }
         }
-    }
 
-    // Timeout fusion of GPS data if stale. Needed because we repeatedly fuse the same
-    // measurement until the next one arrives
-    if (hal.scheduler->millis() > lastFixTime_ms + _msecGpsAvg + 40) {
+        // Timeout fusion of GPS data if stale. Needed because we repeatedly fuse the same
+        // measurement until the next one arrives
+        if (hal.scheduler->millis() > lastFixTime_ms + _msecGpsAvg + 40) {
+            fuseVelData = false;
+            fusePosData = false;
+        }
+
+        // Command fusion of height measurements if new ones available
+        if (newDataHgt)
+        {
+            // reset data arrived flag
+            newDataHgt = false;
+            // enable fusion
+            fuseHgtData = true;
+        }
+
+        // Timeout fusion of height data if stale. Needed because we repeatedly fuse the same
+        // measurement until the next one arrives
+        readHgtData();
+        if (hal.scheduler->millis() > lastHgtUpdate + _msecHgtAvg + 40) {
+            fuseHgtData = false;
+        }
+    } else {
+        // we only fuse position and height in static mode
         fuseVelData = false;
-        fusePosData = false;
-    }
-
-    // Command fusion of height measurements if new ones available or in static mode
-    readHgtData();
-    if (newDataHgt||staticMode)
-    {
-        fuseHgtData = true;
-        // Calculate the scale factor to be applied to the measurement variance to account for
-        // the fact we repeat fusion of the same measurement to provide a smoother output
-        hgtVarScaler = _msecHgtAvg/(1000.0f*dtVelPos);
-    }
-
-    // Timeout fusion of height data if stale. Needed because we repeatedly fuse the same
-    // measurement until the next one arrives
-    if (hal.scheduler->millis() > lastHgtUpdate + _msecHgtAvg + 40) {
-        fuseHgtData = false;
+        fusePosData = true;
+        fusePosData = true;
     }
 
     // Perform fusion if conditions are met
-    if (fuseVelData || fusePosData || fuseHgtData || staticMode) {
+    if (fuseVelData || fusePosData || fuseHgtData) {
         // Skip fusion as required to maintain ~dtVelPos time interval between corrections
-        if (skipCounter == velPosFuseStepRatio) {
+        if (skipCounter >= velPosFuseStepRatio) {
             FuseVelPosNED();
             // reset counter used to skip update frames
             skipCounter = 1;
@@ -600,9 +613,6 @@ void NavEKF::SelectVelPosFusion()
         }
     }
 
-    // reset data arrived flags
-    newDataGps = false;
-    newDataHgt = false;
 }
 
 void NavEKF::SelectMagFusion()
@@ -628,7 +638,7 @@ void NavEKF::SelectTasFusion()
 {
     readAirSpdData();
     // Determine if data is waiting to be fused
-    tasDataWaiting = (statesInitialised && useAirspeed && !onGround && (tasDataWaiting || newDataTas));
+    tasDataWaiting = (statesInitialised && useAirspeed() && !onGround && (tasDataWaiting || newDataTas));
     bool timeout = ((IMUmsec - TASmsecPrev) >= TASmsecMax);
     // Fuse Airspeed Measurements - hold off if magnetometer fusion has been performed, unless maximum time interval exceeded
     if (tasDataWaiting && (!magFusePerformed || timeout || fuseMeNow))
@@ -1085,8 +1095,8 @@ void NavEKF::CovariancePrediction()
 	nextP[9][13] = P[9][13] + P[6][13]*dt;
 	nextP[9][14] = P[9][14] + P[6][14]*dt;
 	nextP[9][15] = P[9][15] + P[6][15]*dt;
-	nextP[9][16] = P[9][16] + P[6][16]*dt;
-	nextP[9][17] = P[9][17] + P[6][17]*dt;
+    nextP[9][16] = P[9][16] + P[6][16]*dt;
+    nextP[9][17] = P[9][17] + P[6][17]*dt;
 	nextP[9][18] = P[9][18] + P[6][18]*dt;
 	nextP[9][19] = P[9][19] + P[6][19]*dt;
 	nextP[9][20] = P[9][20] + P[6][20]*dt;
@@ -1361,29 +1371,6 @@ void NavEKF::CovariancePrediction()
         nextP[i][i] = nextP[i][i] + processNoise[i];
     }
 
-    // If on ground or no compasss fitted, inhibit magnetic field state covariance growth
-    if (onGround || !useCompass)
-    {
-        for (uint8_t i=16; i<=21; i++) {
-            for (uint8_t j=0; j<=21; j++) {
-                nextP[i][j] = P[i][j];
-                nextP[j][i] = P[j][i];
-            }
-        }
-    }
-
-    // If on ground or not using airspeed sensing, inhibit wind velocity
-    // covariance growth.
-    if (onGround || !useAirspeed)
-    {
-        for (uint8_t i=14; i<=15; i++) {
-            for (uint8_t j=0; j<=21; j++) {
-                nextP[i][j] = P[i][j];
-                nextP[j][i] = P[j][i];
-            }
-        }
-    }
-
     // If the total position variance exceeds 1E6 (1000m), then stop covariance
     // growth by setting the predicted to the previous values
     // This prevent an ill conditioned matrix from occurring for long periods
@@ -1400,19 +1387,10 @@ void NavEKF::CovariancePrediction()
         }
     }
 
-    // Copy to output whilst forcing symmetry to prevent ill-conditioning
-    // of the matrix
-    for (uint8_t i=0; i<=21; i++) P[i][i] = nextP[i][i];
-    for (uint8_t i=1; i<=21; i++)
-    {
-        for (uint8_t j=0; j<=i-1; j++)
-        {
-            P[i][j] = 0.5f*(nextP[i][j] + nextP[j][i]);
-            P[j][i] = P[i][j];
-        }
-    }
+    // Copy covariances to output and fix numerical errors
+    CopyAndFixCovariances();
 
-    // Constrain variances to prevent ill-conditioning
+    // Constrain diagonals to prevent ill-conditioning
     ConstrainVariances();
 
     perf_end(_perf_CovariancePrediction);
@@ -1455,12 +1433,12 @@ void NavEKF::FuseVelPosNED()
     if (fuseVelData || fusePosData || fuseHgtData)
     {
 
-        // if static mode is active use the current states to perform fusion
-        // against the static measurements. We need to do this because there may
-        // not be measurements present to store states against
+        // if static mode is active use the current states to calculate the predicted
+        // measurement. We need to do this because there may be no stored states due
+        // to lack of measurements.
+        // in static mode, only position and height fusion is used
         if (staticMode) {
-            for (uint8_t i=4; i<=9; i++) {
-                statesAtVelTime[i] = states[i];
+            for (uint8_t i=7; i<=9; i++) {
                 statesAtPosTime[i] = states[i];
                 statesAtHgtTime[i] = states[i];
             }
@@ -1468,16 +1446,16 @@ void NavEKF::FuseVelPosNED()
         
         // set the GPS data timeout depending on whether airspeed data is present
         uint32_t gpsRetryTime;
-        if (useAirspeed) gpsRetryTime = _gpsRetryTimeUseTAS;
+        if (useAirspeed()) gpsRetryTime = _gpsRetryTimeUseTAS;
         else gpsRetryTime = _gpsRetryTimeNoTAS;
 
         // Form the observation vector
-        for (uint8_t i=0; i<=2; i++) observation[i] = velNED[i];
-        for (uint8_t i=3; i<=4; i++) observation[i] = posNE[i-3];
-        observation[5] = -hgtMea;
-
         // zero observations if in static mode (used for pre-arm and bench testing)
-        if (staticMode) {
+        if (~staticMode) {
+            for (uint8_t i=0; i<=2; i++) observation[i] = velNED[i];
+            for (uint8_t i=3; i<=4; i++) observation[i] = posNE[i-3];
+        observation[5] = -hgtMea;
+        } else {
             for (uint8_t i=0; i<=5; i++) observation[i] = 0.0f;
         }
 
@@ -1511,18 +1489,17 @@ void NavEKF::FuseVelPosNED()
             // apply an innovation consistency threshold test
             velHealth = ((sq(velInnov[0]) + sq(velInnov[1]) + sq(velInnov[2])) < (sq(_gpsVelInnovGate) * (varInnovVelPos[0] + varInnovVelPos[1] + varInnovVelPos[2])));
             velTimeout = (hal.scheduler->millis() - velFailTime) > gpsRetryTime;
-            if (velHealth || velTimeout)
+            if (velHealth || velTimeout || staticMode)
             {
                 velHealth = true;
                 velFailTime = hal.scheduler->millis();
+                // if timed out, reset the velocity, but do not fuse data on this time step
                 if (velTimeout)
                 {
-                    if (!staticMode) {
-                        ResetVelocity();
-                    }
+                    ResetVelocity();
+                    StoreStatesReset();
                     fuseVelData =  false;
                 }
-
             }
             else
             {
@@ -1539,15 +1516,16 @@ void NavEKF::FuseVelPosNED()
             // apply an innovation consistency threshold test
             posHealth = ((sq(posInnov[0]) + sq(posInnov[1])) < (sq(_gpsPosInnovGate) * (varInnovVelPos[3] + varInnovVelPos[4])));
             posTimeout = (hal.scheduler->millis() - posFailTime) > gpsRetryTime;
-            if (posHealth || posTimeout)
+            // Fuse position data if healthy or timed out or in static mode
+            if (posHealth || posTimeout || staticMode)
             {
                 posHealth = true;
                 posFailTime = hal.scheduler->millis();
+                // if timed out, reset the position, but do not fuse data on this time step
                 if (posTimeout)
                 {
-                    if (!staticMode) {
-                        ResetPosition();
-                    }
+                    ResetPosition();
+                    StoreStatesReset();
                     fusePosData = false;
                 }
             }
@@ -1569,13 +1547,16 @@ void NavEKF::FuseVelPosNED()
             // apply an innovation consistency threshold test
             hgtHealth = (sq(hgtInnov) < (sq(_hgtInnovGate) * varInnovVelPos[5]));
             hgtTimeout = (hal.scheduler->millis() - hgtFailTime) > hgtRetryTime;
-            if (hgtHealth || hgtTimeout)
+            // Fuse height data if healthy or timed out or in static mode
+            if (hgtHealth || hgtTimeout || staticMode)
             {
                 hgtHealth = true;
                 hgtFailTime = hal.scheduler->millis();
+                // if timed out, reset the height, but do not fuse data on this time step
                 if (hgtTimeout)
                 {
                     ResetHeight();
+                    StoreStatesReset();
                     fuseHgtData = false;
                 }
             }
@@ -1586,13 +1567,13 @@ void NavEKF::FuseVelPosNED()
         }
         // Set range for sequential fusion of velocity and position measurements depending
         // on which data is available and its health
-        if ((fuseVelData && _fusionModeGPS == 0 && velHealth) || staticMode)
+        if (fuseVelData && _fusionModeGPS == 0 && velHealth && !staticMode)
         {
             fuseData[0] = true;
             fuseData[1] = true;
             fuseData[2] = true;
         }
-        if (fuseVelData && _fusionModeGPS == 1 && velHealth)
+        if (fuseVelData && _fusionModeGPS == 1 && velHealth && !staticMode)
         {
             fuseData[0] = true;
             fuseData[1] = true;
@@ -2164,6 +2145,19 @@ void NavEKF::StoreStates()
     storeIndex = storeIndex + 1;
 }
 
+// Reset the stored state history and store the current state
+void NavEKF::StoreStatesReset()
+{
+    // clear stored state history
+    memset(&storedStates[0][0], 0, sizeof(storedStates));
+    memset(&statetimeStamp[0], 0, sizeof(statetimeStamp));
+    // store current state vector in first column
+    storeIndex = 0;
+    for (uint8_t i=0; i<=21; i++) storedStates[i][storeIndex] = states[i];
+    statetimeStamp[storeIndex] = hal.scheduler->millis();
+    storeIndex = storeIndex + 1;
+}
+
 // Output the state vector stored at the time that best matches that specified by msec
 void NavEKF::RecallStates(Vector22 &statesForFusion, uint32_t msec)
 {
@@ -2230,8 +2224,8 @@ void NavEKF::getGyroBias(Vector3f &gyroBias) const
 
 void NavEKF::getAccelBias(Vector3f &accelBias) const
 {
-    accelBias.x = 0.0f;
-    accelBias.y = 0.0f;
+    accelBias.x = staticMode? 1.0f : 0.0f;
+    accelBias.y = static_mode_demanded()? 1.0f : 0.0f;
     accelBias.z = states[13] / dtIMU;
 }
 
@@ -2330,6 +2324,71 @@ void NavEKF::ForceSymmetry()
             float temp = 0.5f*(P[i][j] + P[j][i]);
             P[i][j] = temp;
             P[j][i] = temp;
+        }
+    }
+}
+
+void NavEKF::CopyAndFixCovariances()
+{
+    // if we are in ground or static mode, we want all the off-diagonals for the wind
+    // and magnetic field states to remain zero and want to keep the old variances
+    // for these states
+    if (onGround || staticMode) {
+        // copy calculated variances we want to propagate
+        for (uint8_t i=0; i<=13; i++) {
+            P[i][i] = nextP[i][i];
+        }
+        // force covariances to be either zero or symetrical
+        for (uint8_t i=1; i<=21; i++)
+        {
+            for (uint8_t j=0; j<=i-1; j++)
+            {
+                if ((i >= 14) || (j >= 14)) {
+                    P[i][j] = 0.0f;
+                } else {
+                    P[i][j] = 0.5f*(nextP[i][j] + nextP[j][i]);
+                }
+                P[j][i] = P[i][j];
+            }
+        }
+    }
+    // if we flying, but not using airspeed, we want all the off-diagonals for the wind
+    // states to remain zero and want to keep the old variances for these states
+    else if (!useAirspeed()) {
+        // copy calculated variances we want to propagate
+        for (uint8_t i=0; i<=13; i++) {
+            P[i][i] = nextP[i][i];
+        }
+        for (uint8_t i=16; i<=21; i++) {
+            P[i][i] = nextP[i][i];
+        }
+        // force covariances to be either zero or symetrical
+        for (uint8_t i=1; i<=21; i++)
+        {
+            for (uint8_t j=0; j<=i-1; j++)
+            {
+                if (i == 14 || i == 15 || j == 14 || j == 15) {
+                    P[i][j] = 0.0f;
+                } else {
+                    P[i][j] = 0.5f*(nextP[i][j] + nextP[j][i]);
+                }
+                P[j][i] = P[i][j];
+            }
+        }
+    }
+    // if flying with all sensors all covariance terms are active
+    else {
+        // copy calculated variances we want to propagate
+        for (uint8_t i=0; i<=21; i++) {
+            P[i][i] = nextP[i][i];
+        }
+        for (uint8_t i=1; i<=21; i++)
+        {
+            for (uint8_t j=0; j<=i-1; j++)
+            {
+                P[i][j] = 0.5f*(nextP[i][j] + nextP[j][i]);
+                P[j][i] = P[i][j];
+            }
         }
     }
 }
@@ -2567,6 +2626,7 @@ void NavEKF::ZeroVariables()
     dtIMU = 0;
     dt = 0;
     hgtMea = 0;
+    storeIndex = 0;
 	prevDelAng.zero();
     lastAngRate.zero();
     lastAccel.zero();
@@ -2583,6 +2643,22 @@ void NavEKF::ZeroVariables()
     memset(&storedStates[0][0], 0, sizeof(storedStates));
     memset(&statetimeStamp[0], 0, sizeof(statetimeStamp));
     memset(&posNE[0], 0, sizeof(posNE));
+}
+
+bool NavEKF::useAirspeed(void) const
+{
+    if (_ahrs->get_airspeed() == NULL) {
+        return false;
+    }
+    return _ahrs->get_airspeed()->use();
+}
+
+/*
+  see if the vehicle code has demanded static mode
+ */
+bool NavEKF::static_mode_demanded(void) const 
+{
+    return !_ahrs->get_armed() || !_ahrs->get_correct_centrifugal();
 }
 
 #endif // HAL_CPU_CLASS
