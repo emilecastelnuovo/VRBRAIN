@@ -67,7 +67,7 @@ static void detect_compass(void){
 
     AP_Compass_HMC5843_EXT compass_ext;
 
-    hal.scheduler->delay(10);
+    hal.scheduler->delay(1000);
 
     g_ext_mag_detect = 0;
 
@@ -90,7 +90,7 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
   scheduler->init(NULL);
 
   uartA->begin(57600);
-  uartC->begin(57600);
+  //uartC->begin(57600);
   //uartC->set_blocking_writes(true);
 
 
