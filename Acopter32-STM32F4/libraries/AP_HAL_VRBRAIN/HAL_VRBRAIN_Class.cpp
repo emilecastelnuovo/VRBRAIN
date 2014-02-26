@@ -66,19 +66,19 @@ extern const AP_HAL::HAL& hal;
 static void detect_compass(void){
 
     AP_Compass_HMC5843_EXT compass_ext;
+    AP_Compass_HMC5843 compass;
 
     hal.scheduler->delay(1000);
 
-    g_ext_mag_detect = 0;
-
-    if(compass_ext.init())
-	{
+    if(compass_ext.init()){
 	hal.console->printf_P(PSTR("External Compass found!"));
 	g_ext_mag_detect = 1;
 	return;
     }
-
-return;
+    if(compass.init()){
+	hal.console->printf_P(PSTR("Internal Compass found!"));
+	g_ext_mag_detect = 0;
+	}
 }
 
 void HAL_VRBRAIN::init(int argc,char* const argv[]) const
@@ -93,6 +93,7 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
   //uartC->begin(57600);
   //uartC->set_blocking_writes(true);
 
+  g_ext_mag_detect = 0;
 
   //_member->init();
   i2c->begin();
