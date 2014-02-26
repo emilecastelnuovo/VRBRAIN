@@ -51,7 +51,7 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
       &spiDeviceManager,
       &analogIn,
       &storageDriver,
-      &uartCDriver,
+      &uartADriver,
       &gpioDriver,
       &rcinDriver,
       &rcoutDriver,
@@ -71,7 +71,8 @@ static void detect_compass(void){
 
     g_ext_mag_detect = 0;
 
-    if(compass_ext.init()){
+    if(compass_ext.init())
+	{
 	hal.console->printf_P(PSTR("External Compass found!"));
 	g_ext_mag_detect = 1;
 	return;
