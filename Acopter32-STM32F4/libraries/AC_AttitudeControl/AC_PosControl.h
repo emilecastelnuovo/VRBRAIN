@@ -11,7 +11,7 @@
 #include <AC_AttitudeControl.h> // Attitude control library
 #include <AP_Motors.h>          // motors library
 #include <AP_Vehicle.h>         // common vehicle parameters
-
+#include <LowPassFilter.h>
 
 // position controller default definitions
 #define POSCONTROL_THROTTLE_HOVER               450.0f  // default throttle required to maintain hover
@@ -308,5 +308,8 @@ private:
     float       _distance_to_target;    // distance to position target - for reporting only
     uint8_t     _xy_step;               // used to decide which portion of horizontal position controller to run during this iteration
     float       _dt_xy;                 // time difference in seconds between horizontal position updates
+    LowPassFilterFloat _accel_filter_x;
+    LowPassFilterFloat _accel_filter_y;
+
 };
 #endif	// AC_POSCONTROL_H

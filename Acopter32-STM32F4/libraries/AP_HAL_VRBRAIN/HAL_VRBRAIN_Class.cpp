@@ -46,6 +46,7 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
       &uartBDriver,
       &uartCDriver,
 	  NULL,
+	  NULL,
       &i2cDriver,
       &i2c2Driver,
       &spiDeviceManager,

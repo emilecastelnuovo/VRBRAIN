@@ -122,6 +122,15 @@
  # define MAIN_LOOP_SECONDS 0.01
  # define MAIN_LOOP_MICROS  10000
 #endif
+
+// 2nd GPS support
+#if HAL_CPU_CLASS >= HAL_CPU_CLASS_150
+#define GPS2_ENABLE 0
+#else
+#define GPS2_ENABLE 0
+#endif
+
+
 //////////////////////////////////////////////////////////////////////////////
 // FRAME_CONFIG
 //
@@ -281,6 +290,9 @@
 
  #undef CONFIG_SONAR
  #define CONFIG_SONAR DISABLED
+
+ #undef GPS2_ENABLE
+ #define GPS2_ENABLE 0
 #endif
 
 

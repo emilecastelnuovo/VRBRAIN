@@ -110,6 +110,7 @@ static void init_aux_switches()
         case AUX_SWITCH_EPM:
         case AUX_SWITCH_SPRAYER:
         case AUX_SWITCH_EKF:
+        case AUX_SWITCH_CIRCLE_CENTER:
             do_aux_switch_function(g.ch7_option, ap.CH7_flag);
             break;
     }
@@ -124,6 +125,7 @@ static void init_aux_switches()
         case AUX_SWITCH_EPM:
         case AUX_SWITCH_SPRAYER:
         case AUX_SWITCH_EKF:
+        case AUX_SWITCH_CIRCLE_CENTER:
             do_aux_switch_function(g.ch8_option, ap.CH8_flag);
             break;
     }
@@ -379,6 +381,11 @@ static void do_aux_switch_function(int8_t ch_function, uint8_t ch_flag)
         ahrs.set_ekf_use(ch_flag==AUX_SWITCH_HIGH);
         break;
 #endif
+    case AUX_SWITCH_CIRCLE_CENTER:
+	 Vector3f curr_pos = inertial_nav.get_position();
+	 circle_nav.set_center(curr_pos);
+	 circle_center_override = true;
+	 break;
         
     }
 }

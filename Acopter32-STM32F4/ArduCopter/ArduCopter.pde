@@ -582,7 +582,8 @@ static float acro_level_mix;                // scales back roll, pitch and yaw i
 static uint8_t circle_desired_rotations;        // how many times to circle as specified by mission command
 static uint16_t loiter_time_max;                // How long we should stay in Loiter Mode for mission scripting (time in seconds)
 static uint32_t loiter_time;                    // How long have we been loitering - The start time in millis
-
+static Vector3f circle_center;
+static bool circle_center_override;
 
 ////////////////////////////////////////////////////////////////////////////////
 // CH7 and CH8 save waypoint control
@@ -1291,6 +1292,19 @@ static void update_GPS(void)
 
     // check for loss of gps
     failsafe_gps_check();
+
+#if GPS2_ENABLE
+    static uint32_t last_gps2_reading;
+    if (g_gps2 != NULL) {
+        g_gps2->update();
+        if (g_gps2->last_message_time_ms() != last_gps2_reading) {
+            last_gps2_reading = g_gps2->last_message_time_ms();
+            if (g.log_bitmask & MASK_LOG_GPS) {
+                DataFlash.Log_Write_GPS2(g_gps2);
+            }
+        }
+    }
+#endif
 }
 
 static void
@@ -1553,6 +1567,11 @@ static void tuning(){
         ahrs.get_NavEKF()._accNoise = tuning_value;
         break;
 #endif
+
+    case CH6_RC_FEEL_RP:
+        // roll-pitch input smoothing
+        g.rc_feel_rp = g.rc_6.control_in / 10;
+        break;
     }
 }
 
