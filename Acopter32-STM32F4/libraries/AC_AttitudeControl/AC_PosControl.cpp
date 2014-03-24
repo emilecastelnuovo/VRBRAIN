@@ -51,9 +51,7 @@ AC_PosControl::AC_PosControl(const AP_AHRS& ahrs, const AP_InertialNav& inav,
     _alt_max(0),
     _distance_to_target(0),
     _xy_step(0),
-    _dt_xy(0) //,
-    //_accel_filter_x(0.25f,0.5f),
-    //_accel_filter_y(0.25f,0.5f)
+    _dt_xy(0)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -143,10 +141,10 @@ void AC_PosControl::get_stopping_point_z(Vector3f& stopping_point) const
     const float curr_pos_z = _inav.get_altitude();
     const float curr_vel_z = _inav.get_velocity_z();
 
-    float linear_distance;  // half the distace we swap between linear and sqrt and the distace we offset sqrt
+    float linear_distance;  // half the distance we swap between linear and sqrt and the distance we offset sqrt
     float linear_velocity;  // the velocity we swap between linear and sqrt
 
-    // calculate the velocity at which we switch from calculating the stopping point using a linear funcction to a sqrt function
+    // calculate the velocity at which we switch from calculating the stopping point using a linear function to a sqrt function
     linear_velocity = POSCONTROL_ALT_HOLD_ACCEL_MAX/_p_alt_pos.kP();
 
     if (fabs(curr_vel_z) < linear_velocity) {
@@ -192,7 +190,7 @@ void AC_PosControl::calc_leash_length_z()
 {
     if (_flags.recalc_leash_z) {
         _leash_up_z = calc_leash_length(_speed_up_cms, _accel_z_cms, _p_alt_pos.kP());
-        _leash_down_z = calc_leash_length(_speed_down_cms, _accel_z_cms, _p_alt_pos.kP());
+        _leash_down_z = calc_leash_length(-_speed_down_cms, _accel_z_cms, _p_alt_pos.kP());
         _flags.recalc_leash_z = false;
     }
 }
@@ -340,7 +338,6 @@ void AC_PosControl::accel_to_throttle(float accel_target_z)
     d = _pid_alt_accel.get_d(_accel_error.z, _dt);
 
     // To-Do: pull min/max throttle from motors
-    // To-Do: where to get hover throttle?
     // To-Do: we had a contraint here but it's now removed, is this ok?  with the motors library handle it ok?
     _attitude_control.set_throttle_out((int16_t)p+i+d+_throttle_hover, true);
     

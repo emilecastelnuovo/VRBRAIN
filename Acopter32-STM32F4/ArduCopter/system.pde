@@ -235,6 +235,7 @@ static void init_ardupilot()
     if (hal.uartE != NULL) {
         g_gps2 = &g_gps2_driver;
         g_gps2->init(hal.uartE, GPS::GPS_ENGINE_AIRBORNE_4G);
+        g_gps2->set_secondary();
     }
 #endif
 
@@ -286,9 +287,8 @@ static void init_ardupilot()
     init_sonar();
 #endif
 
-    // initialize commands
-    // -------------------
-    init_commands();
+    // initialise mission library
+    mission.init();
 
     // initialise the flight mode and aux switch
     // ---------------------------

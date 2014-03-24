@@ -254,45 +254,6 @@ static void report_ins()
     print_blanks(2);
 }
 
-static void report_compass()
-{
-    cliSerial->printf_P(PSTR("Compass\n"));
-    print_divider();
-
-    print_enabled(g.compass_enabled);
-
-    // mag declination
-    cliSerial->printf_P(PSTR("Mag Dec: %4.4f\n"),
-                    degrees(compass.get_declination()));
-
-    Vector3f offsets = compass.get_offsets();
-
-    // mag offsets
-    cliSerial->printf_P(PSTR("Mag off: %4.4f, %4.4f, %4.4f\n"),
-                    offsets.x,
-                    offsets.y,
-                    offsets.z);
-
-    // motor compensation
-    cliSerial->print_P(PSTR("Motor Comp: "));
-    if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_DISABLED ) {
-        cliSerial->print_P(PSTR("Off\n"));
-    }else{
-        if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_THROTTLE ) {
-            cliSerial->print_P(PSTR("Throttle"));
-        }
-        if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_CURRENT ) {
-            cliSerial->print_P(PSTR("Current"));
-        }
-        Vector3f motor_compensation = compass.get_motor_compensation();
-        cliSerial->printf_P(PSTR("\nComp Vec: %4.2f, %4.2f, %4.2f\n"),
-                        motor_compensation.x,
-                        motor_compensation.y,
-                        motor_compensation.z);
-    }
-    print_blanks(1);
-}
-
 static void report_flight_modes()
 {
     cliSerial->printf_P(PSTR("Flight modes\n"));
@@ -346,24 +307,6 @@ print_switch(uint8_t p, uint8_t m, bool b)
 }
 
 static void
-print_done()
-{
-    cliSerial->printf_P(PSTR("\nSaved\n"));
-}
-
-
-static void zero_eeprom(void)
-{
-    cliSerial->printf_P(PSTR("\nErasing EEPROM\n"));
-
-    for (uint16_t i = 0; i < EEPROM_MAX_ADDR; i++) {
-        hal.storage->write_byte(i, 0);
-    }
-
-    cliSerial->printf_P(PSTR("done\n"));
-}
-
-static void
 print_accel_offsets_and_scaling(void)
 {
     const Vector3f &accel_offsets = ins.get_accel_offsets();
@@ -388,6 +331,46 @@ print_gyro_offsets(void)
 }
 
 #endif // CLI_ENABLED
+
+// report_compass - displays compass information.  Also called by compassmot.pde
+static void report_compass()
+{
+    cliSerial->printf_P(PSTR("Compass\n"));
+    print_divider();
+
+    print_enabled(g.compass_enabled);
+
+    // mag declination
+    cliSerial->printf_P(PSTR("Mag Dec: %4.4f\n"),
+                    degrees(compass.get_declination()));
+
+    Vector3f offsets = compass.get_offsets();
+
+    // mag offsets
+    cliSerial->printf_P(PSTR("Mag off: %4.4f, %4.4f, %4.4f\n"),
+                    offsets.x,
+                    offsets.y,
+                    offsets.z);
+
+    // motor compensation
+    cliSerial->print_P(PSTR("Motor Comp: "));
+    if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_DISABLED ) {
+        cliSerial->print_P(PSTR("Off\n"));
+    }else{
+        if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_THROTTLE ) {
+            cliSerial->print_P(PSTR("Throttle"));
+        }
+        if( compass.motor_compensation_type() == AP_COMPASS_MOT_COMP_CURRENT ) {
+            cliSerial->print_P(PSTR("Current"));
+        }
+        Vector3f motor_compensation = compass.get_motor_compensation();
+        cliSerial->printf_P(PSTR("\nComp Vec: %4.2f, %4.2f, %4.2f\n"),
+                        motor_compensation.x,
+                        motor_compensation.y,
+                        motor_compensation.z);
+    }
+    print_blanks(1);
+}
 
 static void
 print_blanks(int16_t num)

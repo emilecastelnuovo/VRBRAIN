@@ -7,16 +7,9 @@
 // circle_init - initialise circle controller
 static bool circle_init(bool ignore_checks)
 {
-
     if ((GPS_ok() && inertial_nav.position_ok()) || ignore_checks) {
         circle_pilot_yaw_override = false;
-        if(circle_center_override) {
-            circle_nav.set_radius(fabsf(pv_get_horizontal_distance_cm(inertial_nav.get_position(),circle_nav.get_center()) ));
-
-        } else {
-            circle_nav.init_center();
-        }
-
+        circle_nav.init_center();
         return true;
     }else{
         return false;

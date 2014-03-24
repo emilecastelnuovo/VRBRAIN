@@ -108,6 +108,7 @@
 #include <AP_InertialSensor.h>  // ArduPilot Mega Inertial Sensor (accel & gyro) Library
 #include <AP_AHRS.h>
 #include <AP_NavEKF.h>
+#include <AP_Mission.h>         // Mission command library
 #include <AC_PID.h>             // PID library
 #include <AC_P.h>               // P library
 #include <AC_AttitudeControl.h> // Attitude control library
@@ -304,6 +305,9 @@ static AP_Compass_HMC5843 compass;
 // real GPS selection
  #if   GPS_PROTOCOL == GPS_PROTOCOL_AUTO
 AP_GPS_Auto     g_gps_driver(&g_gps);
+#if GPS2_ENABLE
+AP_GPS_UBLOX    g_gps2_driver;
+#endif
 
  #elif GPS_PROTOCOL == GPS_PROTOCOL_NMEA
 AP_GPS_NMEA     g_gps_driver;
@@ -350,6 +354,13 @@ AP_AHRS_NavEKF ahrs(ins, barometer, g_gps);
 #else
 AP_AHRS_DCM ahrs(ins, barometer, g_gps);
 #endif
+
+// Mission library
+// forward declaration to keep compiler happy
+static bool start_command(const AP_Mission::Mission_Command& cmd);
+static bool verify_command(const AP_Mission::Mission_Command& cmd);
+static void exit_mission();
+AP_Mission mission(ahrs, &start_command, &verify_command, &exit_mission, MISSION_START_BYTE, MISSION_END_BYTE);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Optical flow sensor
@@ -518,18 +529,6 @@ static int32_t home_bearing;
 static int32_t home_distance;
 // distance between plane and next waypoint in cm.
 static uint32_t wp_distance;
-// Register containing the index of the current navigation command in the mission script
-static int16_t command_nav_index;
-// Register containing the index of the previous navigation command in the mission script
-// Used to manage the execution of conditional commands
-static uint8_t prev_nav_index;
-// Register containing the index of the current conditional command in the mission script
-static uint8_t command_cond_index;
-// Used to track the required WP navigation information
-// options include
-// NAV_ALTITUDE - have we reached the desired altitude?
-// NAV_LOCATION - have we reached the desired location?
-// NAV_DELAY    - have we waited at the waypoint the desired time?
 static float lon_error, lat_error;      // Used to report how many cm we are from the next waypoint or loiter target position
 static uint8_t land_state;              // records state of land (flying to location, descending)
 
@@ -582,15 +581,6 @@ static float acro_level_mix;                // scales back roll, pitch and yaw i
 static uint8_t circle_desired_rotations;        // how many times to circle as specified by mission command
 static uint16_t loiter_time_max;                // How long we should stay in Loiter Mode for mission scripting (time in seconds)
 static uint32_t loiter_time;                    // How long have we been loitering - The start time in millis
-static Vector3f circle_center;
-static bool circle_center_override;
-
-////////////////////////////////////////////////////////////////////////////////
-// CH7 and CH8 save waypoint control
-////////////////////////////////////////////////////////////////////////////////
-// This register tracks the current Mission Command index when writing
-// a mission using Ch7 or Ch8 aux switches in flight
-static int8_t aux_switch_wp_index;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,10 +609,6 @@ static const struct  Location &home = ahrs.get_home();
 
 // Current location of the copter
 static struct   Location current_loc;
-// Holds the current loaded command from the EEPROM for navigation
-static struct   Location command_nav_queue;
-// Holds the current loaded command from the EEPROM for conditional scripts
-static struct   Location command_cond_queue;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -780,7 +766,7 @@ static void pre_arm_checks(bool display_failure);
 ////////////////////////////////////////////////////////////////////////////////
 
 // setup the var_info table
-AP_Param param_loader(var_info, WP_START_BYTE);
+AP_Param param_loader(var_info, MISSION_START_BYTE);
 
 #if MAIN_LOOP_RATE == 400
 /*
@@ -800,7 +786,7 @@ AP_Param param_loader(var_info, WP_START_BYTE);
   
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-    { rc_loop,               4,     100 },
+    { rc_loop,               4,     140 },
     { throttle_loop,         8,     450 },
     { update_GPS,            8,     900 },
     { update_batt_compass,  40,     720 },

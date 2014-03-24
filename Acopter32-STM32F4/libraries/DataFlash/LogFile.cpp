@@ -942,3 +942,39 @@ void DataFlash_Class::Log_Write_EKF(AP_AHRS_NavEKF &ahrs)
 }
 #endif
 
+// Write a command processing packet
+void DataFlash_Class::Log_Write_MavCmd(uint16_t cmd_total, const mavlink_mission_item_t& mav_cmd)
+{
+    struct log_Cmd pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_CMD_MSG),
+        time_ms         : hal.scheduler->millis(),
+        command_total   : (uint16_t)cmd_total,
+        sequence        : (uint16_t)mav_cmd.seq,
+        command         : (uint16_t)mav_cmd.command,
+        param1          : (float)mav_cmd.param1,
+        param2          : (float)mav_cmd.param2,
+        param3          : (float)mav_cmd.param3,
+        param4          : (float)mav_cmd.param4,
+        latitude        : (float)mav_cmd.x,
+        longitude       : (float)mav_cmd.y,
+        altitude        : (float)mav_cmd.z
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
+void DataFlash_Class::Log_Write_Radio(const mavlink_radio_t &packet) 
+{
+    struct log_Radio pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_RADIO_MSG),
+        time_ms      : hal.scheduler->millis(),
+        rssi         : packet.rssi,
+        remrssi      : packet.remrssi,
+        txbuf        : packet.txbuf,
+        noise        : packet.noise,
+        remnoise     : packet.remnoise,
+        rxerrors     : packet.rxerrors,
+        fixed        : packet.fixed
+    };
+    WriteBlock(&pkt, sizeof(pkt)); 
+}
+
