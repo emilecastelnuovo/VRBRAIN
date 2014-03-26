@@ -241,6 +241,9 @@ static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor:
 
 // All GPS access should be through this pointer.
 static GPS         *g_gps;
+#if GPS2_ENABLE
+static GPS         *g_gps2;
+#endif
 static GPS_Glitch   gps_glitch(g_gps);
 
 // flight modes convenience array
