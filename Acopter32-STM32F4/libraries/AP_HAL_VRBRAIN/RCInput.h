@@ -13,7 +13,8 @@ class VRBRAIN::VRBRAINRCInput : public AP_HAL::RCInput {
 public:
     VRBRAINRCInput();
     void init(void* machtnichts);
-    uint8_t  valid_channels();
+    bool new_input();
+    uint8_t  num_channels();
     uint16_t read(uint8_t ch);
     uint8_t read(uint16_t* periods, uint8_t len);
 
@@ -43,6 +44,7 @@ private:
     static volatile uint16_t _pulse_capt[VRBRAIN_RC_INPUT_NUM_CHANNELS];
     static volatile uint32_t _last_pulse[VRBRAIN_RC_INPUT_NUM_CHANNELS];
     static volatile uint8_t  _valid_channels;
+    static volatile uint32_t _last_input_interrupt_time;
 };
 
 #endif // __AP_HAL_VRBRAIN_RCINPUT_H__

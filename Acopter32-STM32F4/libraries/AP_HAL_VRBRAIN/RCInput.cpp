@@ -26,6 +26,7 @@ extern const AP_HAL::HAL& hal;
 volatile uint16_t VRBRAINRCInput::_pulse_capt[VRBRAIN_RC_INPUT_NUM_CHANNELS] = {0};
 volatile uint32_t VRBRAINRCInput::_last_pulse[VRBRAIN_RC_INPUT_NUM_CHANNELS] = {0};
 volatile uint8_t  VRBRAINRCInput::_valid_channels = 0;
+volatile uint32_t VRBRAINRCInput::_last_input_interrupt_time = 0; // Last time the input interrupt ran
 
 volatile unsigned char radio_status_rc = 0;
 volatile unsigned char sync = 0;
@@ -54,8 +55,8 @@ static inline uint16_t constrain_pulse(uint16_t p) {
 void VRBRAINRCInput::rxIntPPMSUM(uint8_t state, uint16_t value)
     {
     static uint8_t  channel_ctr;
-
-    if (value >= 4000) // Frame synchronization
+    _last_input_interrupt_time = hal.scheduler->millis();
+    if (value > 4000) // Frame synchronization
 	{
 	    if( channel_ctr >= VRBRAIN_RC_INPUT_MIN_CHANNELS ) {
 		_valid_channels = channel_ctr;
@@ -156,7 +157,13 @@ void VRBRAINRCInput::init(void* machtnichts)
     clear_overrides();
     }
 
-uint8_t VRBRAINRCInput::valid_channels()
+bool VRBRAINRCInput::new_input() {
+    if ((hal.scheduler->millis() - _last_input_interrupt_time) > 50)
+	_valid_channels = 0; // Lost RC Input?
+    return _valid_channels != 0;
+}
+
+uint8_t VRBRAINRCInput::num_channels()
     {
     if(!g_is_ppmsum)
 	return 4;
@@ -217,7 +224,7 @@ uint8_t VRBRAINRCInput::read(uint16_t* periods, uint8_t len)
 bool VRBRAINRCInput::set_overrides(int16_t *overrides, uint8_t len)
     {
     bool res = false;
-    for (int i = 0; i < len; i++) {
+    for (uint8_t i = 0; i < len; i++) {
         res |= set_override(i, overrides[i]);
     }
     return res;
@@ -226,7 +233,7 @@ bool VRBRAINRCInput::set_overrides(int16_t *overrides, uint8_t len)
 bool VRBRAINRCInput::set_override(uint8_t channel, int16_t override)
     {
     if (override < 0) return false; /* -1: no change. */
-    if (channel < 8) {
+    if (channel < VRBRAIN_RC_INPUT_NUM_CHANNELS) {
         _override[channel] = override;
         if (override != 0) {
             return true;
@@ -237,8 +244,8 @@ bool VRBRAINRCInput::set_override(uint8_t channel, int16_t override)
 
 void VRBRAINRCInput::clear_overrides()
     {
-    for (int i = 0; i < 8; i++) {
-	set_override(i, 0);
+    for (uint8_t i = 0; i < VRBRAIN_RC_INPUT_NUM_CHANNELS; i++) {
+	_override[i] = 0;
     }
     }
 

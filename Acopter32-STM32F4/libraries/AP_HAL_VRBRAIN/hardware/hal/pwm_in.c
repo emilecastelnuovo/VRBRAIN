@@ -33,7 +33,6 @@
 #include "hal_types.h"
 #include "timer.h"
 #include <systick.h>
-
 #include <boards.h>
 
 #define MINONWIDTH 920 * 2
@@ -221,6 +220,7 @@ static inline void pwmIRQHandler(TIM_TypeDef *tim)
     uint16_t time_on = 0;
     uint16_t time_off = 0;
     static uint16_t last_val = 0;
+
 
     // static uint32_t throttle_timer = 0;
 

@@ -611,7 +611,7 @@ void AC_PosControl::rate_to_accel_xy(float dt)
     _vel_error.x = _vel_target.x - vel_curr.x;
     _vel_error.y = _vel_target.y - vel_curr.y;
 
-    // combine feed foward accel with PID output from velocity error
+    // combine feed forward accel with PID output from velocity error
     // To-Do: check accel limit flag before adding I term
     _accel_target.x += _pid_rate_lat.get_pid(_vel_error.x, dt);
     _accel_target.y += _pid_rate_lon.get_pid(_vel_error.y, dt);
@@ -631,20 +631,13 @@ void AC_PosControl::rate_to_accel_xy(float dt)
 void AC_PosControl::accel_to_lean_angles()
 {
     float accel_right, accel_forward;
-    float accel_filt_x, accel_filt_y;
     float lean_angle_max = _attitude_control.lean_angle_max();
 
     // To-Do: add 1hz filter to accel_lat, accel_lon
 
-    //accel_filt_x = _accel_filter_x.apply(_accel_target.x);
-    //accel_filt_y = _accel_filter_y.apply(_accel_target.y);
-
     // rotate accelerations into body forward-right frame
     accel_forward = _accel_target.x*_ahrs.cos_yaw() + _accel_target.y*_ahrs.sin_yaw();
     accel_right = -_accel_target.x*_ahrs.sin_yaw() + _accel_target.y*_ahrs.cos_yaw();
-
-    //accel_forward = (accel_filt_x)*_ahrs.cos_yaw() + (accel_filt_y)*_ahrs.sin_yaw();
-    //accel_right = (-accel_filt_x)*_ahrs.sin_yaw() + (accel_filt_y)*_ahrs.cos_yaw();
 
     // update angle targets that will be passed to stabilize controller
     _roll_target = constrain_float(fast_atan(accel_right*_ahrs.cos_pitch()/(GRAVITY_MSS * 100))*(18000/M_PI), -lean_angle_max, lean_angle_max);
