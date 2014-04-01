@@ -7,6 +7,7 @@ static void do_land(const AP_Mission::Mission_Command& cmd);
 static void do_loiter_unlimited(const AP_Mission::Mission_Command& cmd);
 static void do_circle(const AP_Mission::Mission_Command& cmd);
 static void do_loiter_time(const AP_Mission::Mission_Command& cmd);
+static void do_spline_wp(const AP_Mission::Mission_Command& cmd);
 static void do_wait_delay(const AP_Mission::Mission_Command& cmd);
 static void do_within_distance(const AP_Mission::Mission_Command& cmd);
 static void do_change_alt(const AP_Mission::Mission_Command& cmd);
@@ -15,6 +16,8 @@ static void do_change_speed(const AP_Mission::Mission_Command& cmd);
 static void do_set_home(const AP_Mission::Mission_Command& cmd);
 static void do_roi(const AP_Mission::Mission_Command& cmd);
 static bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);
+static bool verify_spline_wp(const AP_Mission::Mission_Command& cmd);
+static void auto_spline_start(const Vector3f& destination, bool stopped_at_start, AC_WPNav::spline_segment_end_type seg_end_type, const Vector3f& next_spline_destination);
 
 // start_command - this function will be called when the ap_mission lib wishes to start a new command
 static bool start_command(const AP_Mission::Mission_Command& cmd)
@@ -55,6 +58,10 @@ static bool start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_RETURN_TO_LAUNCH:             //20
         do_RTL();
+        break;
+
+    case MAV_CMD_NAV_SPLINE_WAYPOINT:           // 82  Navigate to Waypoint using spline
+        do_spline_wp(cmd);
         break;
 
     //
@@ -187,6 +194,10 @@ static bool verify_command(const AP_Mission::Mission_Command& cmd)
         return verify_RTL();
         break;
 
+    case MAV_CMD_NAV_SPLINE_WAYPOINT:
+        return verify_spline_wp(cmd);
+        break;
+
     ///
     /// conditional commands
     ///
@@ -264,17 +275,14 @@ static void do_takeoff(const AP_Mission::Mission_Command& cmd)
 static void do_nav_wp(const AP_Mission::Mission_Command& cmd)
 {
     Vector3f local_pos = pv_location_to_vector(cmd.content.location);
-    // Set wp navigation target
-    auto_wp_start(local_pos);
-
-    // initialise original_wp_bearing which is used to check if we have missed the waypoint
-    wp_bearing = wp_nav.get_wp_bearing_to_destination();
-    original_wp_bearing = wp_bearing;
 
     // this will be used to remember the time in millis after we reach or pass the WP.
-    loiter_time     = 0;
+    loiter_time = 0;
     // this is the delay, stored in seconds
-    loiter_time_max = cmd.p1;
+    loiter_time_max = abs(cmd.p1);
+
+    // Set wp navigation target
+    auto_wp_start(local_pos);
     // if no delay set the waypoint as "fast"
     if (loiter_time_max == 0 ) {
         wp_nav.set_fast_waypoint(true);
@@ -293,12 +301,8 @@ static void do_land(const AP_Mission::Mission_Command& cmd)
 
         // calculate and set desired location above landing target
         Vector3f pos = pv_location_to_vector(cmd.content.location);
-        pos.z = min(current_loc.alt, RTL_ALT_MAX);
+        pos.z = current_loc.alt;
         auto_wp_start(pos);
-
-        // initialise original_wp_bearing which is used to check if we have missed the waypoint
-        wp_bearing = wp_nav.get_wp_bearing_to_destination();
-        original_wp_bearing = wp_bearing;
     }else{
         // set landing state
         land_state = LAND_STATE_DESCENDING;
@@ -388,6 +392,49 @@ static void do_loiter_time(const AP_Mission::Mission_Command& cmd)
     // setup loiter timer
     loiter_time     = 0;
     loiter_time_max = cmd.p1;     // units are (seconds)
+}
+
+// do_spline_wp - initiate move to next waypoint
+static void do_spline_wp(const AP_Mission::Mission_Command& cmd)
+{
+    Vector3f local_pos = pv_location_to_vector(cmd.content.location);
+
+    // this will be used to remember the time in millis after we reach or pass the WP.
+    loiter_time = 0;
+    // this is the delay, stored in seconds
+    loiter_time_max = abs(cmd.p1);
+
+    // determine segment start and end type
+    bool stopped_at_start = true;
+    AC_WPNav::spline_segment_end_type seg_end_type = AC_WPNav::SEGMENT_END_STOP;
+    AP_Mission::Mission_Command temp_cmd;
+    Vector3f next_destination;      // end of next segment
+
+    // if previous command was a wp_nav command with no delay set stopped_at_start to false
+    // To-Do: move processing of delay into wp-nav controller to allow it to determine the stopped_at_start value itself?
+    uint16_t prev_cmd_idx = mission.get_prev_nav_cmd_index();
+    if (prev_cmd_idx != AP_MISSION_CMD_INDEX_NONE) {
+        if (mission.read_cmd_from_storage(prev_cmd_idx, temp_cmd)) {
+            if ((temp_cmd.id == MAV_CMD_NAV_WAYPOINT || temp_cmd.id == MAV_CMD_NAV_SPLINE_WAYPOINT) && temp_cmd.p1 == 0) {
+                stopped_at_start = false;
+            }
+        }
+    }
+
+    // if there is no delay at the end of this segment get next nav command
+    if (cmd.p1 == 0 && mission.get_next_nav_cmd(cmd.index+1, temp_cmd)) {
+        // if the next nav command is a waypoint set end type to spline or straight
+        if (temp_cmd.id == MAV_CMD_NAV_WAYPOINT) {
+            seg_end_type = AC_WPNav::SEGMENT_END_STRAIGHT;
+            next_destination = pv_location_to_vector(temp_cmd.content.location);
+        }else if (temp_cmd.id == MAV_CMD_NAV_SPLINE_WAYPOINT) {
+            seg_end_type = AC_WPNav::SEGMENT_END_SPLINE;
+            next_destination = pv_location_to_vector(temp_cmd.content.location);
+        }
+    }
+
+    // set spline navigation target
+    auto_spline_start(local_pos, stopped_at_start, seg_end_type, next_destination);
 }
 
 /********************************************************************************/
@@ -497,6 +544,28 @@ extern bool rtl_state_complete;
 static bool verify_RTL()
 {
     return (rtl_state_complete && (rtl_state == FinalDescent || rtl_state == Land));
+}
+
+// verify_spline_wp - check if we have reached the next way point using spline
+static bool verify_spline_wp(const AP_Mission::Mission_Command& cmd)
+{
+    // check if we have reached the waypoint
+    if( !wp_nav.reached_wp_destination() ) {
+        return false;
+    }
+
+    // start timer if necessary
+    if(loiter_time == 0) {
+        loiter_time = millis();
+    }
+
+    // check if timer has run out
+    if (((millis() - loiter_time) / 1000) >= loiter_time_max) {
+        gcs_send_text_fmt(PSTR("Reached Command #%i"),cmd.index);
+        return true;
+    }else{
+        return false;
+    }
 }
 
 /********************************************************************************/
@@ -638,7 +707,9 @@ static void do_set_home(const AP_Mission::Mission_Command& cmd)
     if(cmd.p1 == 1) {
         init_home();
     } else {
-        ahrs.set_home(cmd.content.location.lat, cmd.content.location.lng, 0);
+        Location loc = cmd.content.location;
+        loc.alt = 0;
+        ahrs.set_home(loc);
         set_home_is_set(true);
     }
 }

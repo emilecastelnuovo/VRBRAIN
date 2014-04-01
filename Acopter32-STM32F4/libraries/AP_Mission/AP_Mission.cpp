@@ -81,18 +81,22 @@ void AP_Mission::resume()
             start();
             return;
         }
+    }
 
-        // restart active navigation command
-        // Note: if there is no active command then the mission must have been stopped just after the previous nav command completed
-        //      update will take care of finding and starting the nav command
-        if (_flags.nav_cmd_loaded) {
-            _cmd_start_fn(_nav_cmd);
-        }
+    // restart active navigation command. We run these on resume()
+    // regardless of whether the mission was stopped, as we may be
+    // re-entering AUTO mode and the nav_cmd callback needs to be run
+    // to setup the current target waypoint
 
-        // restart active do command
-        if (_flags.do_cmd_loaded && _do_cmd.index != AP_MISSION_CMD_INDEX_NONE) {
-            _cmd_start_fn(_do_cmd);
-        }
+    // Note: if there is no active command then the mission must have been stopped just after the previous nav command completed
+    //      update will take care of finding and starting the nav command
+    if (_flags.nav_cmd_loaded) {
+        _cmd_start_fn(_nav_cmd);
+    }
+
+    // restart active do command
+    if (_flags.do_cmd_loaded && _do_cmd.index != AP_MISSION_CMD_INDEX_NONE) {
+        _cmd_start_fn(_do_cmd);
     }
 }
 
@@ -447,6 +451,11 @@ bool AP_Mission::mavlink_to_mission_cmd(const mavlink_mission_item_t& packet, AP
         cmd.p1 = packet.param1;                         // minimum pitch (plane only)
         break;
 
+    case MAV_CMD_NAV_SPLINE_WAYPOINT:                   // MAV ID: 82
+        copy_location = true;
+        cmd.p1 = packet.param1;                         // delay at waypoint in seconds
+        break;
+
     case MAV_CMD_CONDITION_DELAY:                       // MAV ID: 112
         cmd.content.delay.seconds = packet.param1;      // delay in seconds
         break;
@@ -659,6 +668,11 @@ bool AP_Mission::mission_cmd_to_mavlink(const AP_Mission::Mission_Command& cmd, 
     case MAV_CMD_NAV_TAKEOFF:                           // MAV ID: 22
         copy_location = true;                           // only altitude is used
         packet.param1 = cmd.p1;                         // minimum pitch (plane only)
+        break;
+
+    case MAV_CMD_NAV_SPLINE_WAYPOINT:                   // MAV ID: 82
+        copy_location = true;
+        packet.param1 = cmd.p1;                         // delay at waypoint in seconds
         break;
 
     case MAV_CMD_CONDITION_DELAY:                       // MAV ID: 112
