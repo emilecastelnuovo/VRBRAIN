@@ -569,7 +569,7 @@ void AC_PosControl::pos_to_rate_xy(bool use_desired_rate, float dt)
         }
 
         // scale velocity to stays within limits
-        float vel_total = safe_sqrt(_vel_target.x*_vel_target.x + _vel_target.y*_vel_target.y);
+        float vel_total = pythagorous2(_vel_target.x, _vel_target.y);
         if (vel_total > vel_max_from_pos_error) {
             _vel_target.x = vel_max_from_pos_error * _vel_target.x/vel_total;
             _vel_target.y = vel_max_from_pos_error * _vel_target.y/vel_total;

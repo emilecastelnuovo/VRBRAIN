@@ -110,6 +110,15 @@ void ToneAlarm_PX4::update()
             play_tune(TONE_GPS_WARNING_TUNE);
         }
     }
+
+    // check parachute release
+    if (flags.parachute_release != AP_Notify::flags.parachute_release) {
+        flags.parachute_release = AP_Notify::flags.parachute_release;
+        if (flags.parachute_release) {
+            // parachute release warning tune
+            play_tune(TONE_PARACHUTE_RELEASE_TUNE);
+        }
+    }
 }
 
 #endif // CONFIG_HAL_BOARD == HAL_BOARD_PX4

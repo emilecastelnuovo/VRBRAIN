@@ -16,6 +16,7 @@ cppSRCS_$(d) += AP_GPS_Glitch.cpp
 cppSRCS_$(d) += AP_GPS_MTK.cpp
 cppSRCS_$(d) += AP_GPS_MTK19.cpp
 cppSRCS_$(d) += AP_GPS_NMEA.cpp
+cppSRCS_$(d) += AP_GPS_SBP.cpp
 cppSRCS_$(d) += AP_GPS_SIRF.cpp
 cppSRCS_$(d) += AP_GPS_UBLOX.cpp
 cppSRCS_$(d) += GPS_Backend.cpp

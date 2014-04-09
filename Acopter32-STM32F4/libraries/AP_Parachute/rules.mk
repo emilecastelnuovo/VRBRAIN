@@ -5,20 +5,13 @@ d := $(dir)
 BUILDDIRS += $(BUILD_PATH)/$(d)
 
 # Local flags
-CFLAGS_$(d) := -Wall -Werror
+CFLAGS_$(d) := 
 
 # Local rules and targets
 cSRCS_$(d) :=
 
 cppSRCS_$(d) :=
-cppSRCS_$(d) += AP_Math.cpp
-cppSRCS_$(d) += edc.cpp
-cppSRCS_$(d) += location.cpp
-cppSRCS_$(d) += matrix3.cpp
-cppSRCS_$(d) += polygon.cpp
-cppSRCS_$(d) += quaternion.cpp
-cppSRCS_$(d) += vector2.cpp
-cppSRCS_$(d) += vector3.cpp
+cppSRCS_$(d) += AP_Parachute.cpp
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)
