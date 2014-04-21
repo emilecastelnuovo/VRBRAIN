@@ -746,6 +746,9 @@
  #define AC_FENCE ENABLED
 #endif
 
+#ifndef AC_RALLY
+ #define AC_RALLY ENABLED
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // Developer Items

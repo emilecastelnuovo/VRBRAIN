@@ -33,7 +33,7 @@
 //#define COMPASS_EXT
 /*-----------ND EXTERNAL COMPASS--------------*/
 
-//#define FRAME_CONFIG OCTA_FRAME
+//#define FRAME_CONFIG OCTA_QUAD_FRAME
 //#define FRAME_ORIENTATION      PLUS_FRAME
 
  //#define GPS_PROTOCOL           GPS_PROTOCOL_NONE
