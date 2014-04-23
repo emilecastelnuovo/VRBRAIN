@@ -87,6 +87,12 @@ static bool set_mode(uint8_t mode)
             break;
 #endif
 
+#if HYBRID_ENABLED == ENABLED
+        case HYBRID:
+            success = hybrid_init(ignore_checks);
+            break;
+#endif
+
         default:
             success = false;
             break;
@@ -177,6 +183,12 @@ static void update_flight_mode()
             autotune_run();
             break;
 #endif
+
+#if HYBRID_ENABLED == ENABLED
+        case HYBRID:
+            hybrid_run();
+            break;
+#endif
     }
 }
 
@@ -205,6 +217,7 @@ static bool mode_requires_GPS(uint8_t mode) {
         case RTL:
         case CIRCLE:
         case DRIFT:
+        case HYBRID:
             return true;
         default:
             return false;
@@ -276,6 +289,9 @@ print_flight_mode(AP_HAL::BetterStream *port, uint8_t mode)
         break;
     case AUTOTUNE:
         port->print_P(PSTR("AUTOTUNE"));
+        break;
+    case HYBRID:
+        port->print_P(PSTR("HYBRID"));
         break;
     default:
         port->printf_P(PSTR("Mode(%u)"), (unsigned)mode);

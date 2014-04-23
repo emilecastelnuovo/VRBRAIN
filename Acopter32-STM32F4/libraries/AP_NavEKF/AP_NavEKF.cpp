@@ -95,6 +95,9 @@ extern const AP_HAL::HAL& hal;
 
 #define earthRate 0.000072921f // earth rotation rate (rad/sec)
 
+// maximum value for any element in the covariance matrix
+#define EKF_COVARIENCE_MAX 1.0e8f
+
 // when the wind estimation first starts with no airspeed sensor,
 // assume 3m/s to start
 #define STARTUP_WIND_SPEED 3.0f
@@ -326,16 +329,17 @@ NavEKF::NavEKF(const AP_AHRS *ahrs, AP_Baro &baro) :
 {
     AP_Param::setup_object_defaults(this, var_info);
     // Tuning parameters
-    _gpsNEVelVarAccScale    = 0.05f;     // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration
+    _gpsNEVelVarAccScale    = 0.05f;    // Scale factor applied to NE velocity measurement variance due to manoeuvre acceleration
     _gpsDVelVarAccScale     = 0.07f;    // Scale factor applied to vertical velocity measurement variance due to manoeuvre acceleration
-    _gpsPosVarAccScale      = 0.05f;     // Scale factor applied to horizontal position measurement variance due to manoeuvre acceleration
+    _gpsPosVarAccScale      = 0.05f;    // Scale factor applied to horizontal position measurement variance due to manoeuvre acceleration
     _msecHgtDelay           = 60;       // Height measurement delay (msec)
     _msecMagDelay           = 40;       // Magnetometer measurement delay (msec)
     _msecTasDelay           = 240;      // Airspeed measurement delay (msec)
     _gpsRetryTimeUseTAS     = 20000;    // GPS retry time with airspeed measurements (msec)
-    _gpsRetryTimeNoTAS      = 10000;     // GPS retry time without airspeed measurements (msec)
+    _gpsRetryTimeNoTAS      = 10000;    // GPS retry time without airspeed measurements (msec)
     _hgtRetryTimeMode0      = 10000;    // Height retry time with vertical velocity measurement (msec)
     _hgtRetryTimeMode12     = 5000;     // Height retry time without vertical velocity measurement (msec)
+    _magFailTimeLimit_ms    = 10000;     // number of msec before a magnetometer failing innovation consistency checks is declared failed (msec)
     _magVarRateScale        = 0.05f;    // scale factor applied to magnetometer variance due to angular rate
     _gyroBiasNoiseScaler    = 3.0f;     // scale factor applied to gyro bias state process variance when on ground
     _msecGpsAvg             = 200;      // average number of msec between GPS measurements
@@ -397,8 +401,8 @@ void NavEKF::ResetPosition(void)
         // read the GPS
         readGpsData();
         // write to state vector
-        states[7] = posNE[0];
-        states[8] = posNE[1];
+        states[7] = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
+        states[8] = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
     }
 }
 
@@ -654,12 +658,14 @@ void NavEKF::SelectVelPosFusion()
             // reset the counter used to schedule updates so that we always fuse data on the frame GPS data arrives
             skipCounter = velPosFuseStepRatio;
             // If a long time since last GPS update, then reset position and velocity and reset stored state history
-            if ((hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeUseTAS && useAirspeed()) || (hal.scheduler->millis() > secondLastFixTime_ms + _gpsRetryTimeNoTAS && !useAirspeed())) {
-            ResetPosition();
-            ResetVelocity();
-            StoreStatesReset();
+
+            uint32_t gpsRetryTimeout = useAirspeed() ? _gpsRetryTimeUseTAS : _gpsRetryTimeNoTAS;
+            if (hal.scheduler->millis() - secondLastFixTime_ms > gpsRetryTimeout) {
+                ResetPosition();
+                ResetVelocity();
+                StoreStatesReset();
             }
-        } else if (hal.scheduler->millis() > lastFixTime_ms + _msecGpsAvg + 40) {
+        } else if (hal.scheduler->millis() - lastFixTime_ms > (uint32_t)(_msecGpsAvg + 40)) {
             // Timeout fusion of GPS data if stale. Needed because we repeatedly fuse the same
             // measurement until the next one arrives to provide a smoother output
             fuseVelData = false;
@@ -673,7 +679,7 @@ void NavEKF::SelectVelPosFusion()
             newDataHgt = false;
             // enable fusion
             fuseHgtData = true;
-        } else if (hal.scheduler->millis() > lastHgtTime_ms + _msecHgtAvg + 40) {
+        } else if (hal.scheduler->millis() - lastHgtTime_ms > (uint32_t)(_msecHgtAvg + 40)) {
             // timeout fusion of height data if stale. Needed because we repeatedly fuse the same
             // measurement until the next one arrives to provide a smoother output
             fuseHgtData = false;
@@ -716,6 +722,18 @@ void NavEKF::SelectMagFusion()
 {
     // check for and read new magnetometer measurements
     readMagData();
+
+    // If we are using the compass and the magnetometer has been unhealthy for too long we declare it failed
+    if (magHealth) {
+        lastHealthyMagTime_ms = hal.scheduler->millis();
+    } else {
+        if ((hal.scheduler->millis() - lastHealthyMagTime_ms) > _magFailTimeLimit_ms && use_compass()) {
+            magTimeout = true;
+        } else {
+            magTimeout = false;
+        }
+    }
+
 
     // determine if conditions are right to start a new fusion cycle
     bool dataReady = statesInitialised && use_compass() && newDataMag;
@@ -768,7 +786,7 @@ void NavEKF::SelectBetaFusion()
     // we are a fly forward vehicle type AND NOT using a full range of sensors with healthy position
     // AND NOT on the ground AND enough time has lapsed since our last fusion
     // AND (we have not fused magnetometer data on this time step OR the immediate fusion flag is set)
-    if (_ahrs->get_fly_forward() && !(use_compass() && useAirspeed() && posHealth) && !onGround  && ((IMUmsec - BETAmsecPrev) >= _msecBetaAvg) && (!magFusePerformed || fuseMeNow)) {
+    if (assume_zero_sideslip() && !(use_compass() && useAirspeed() && posHealth) && !onGround  && ((IMUmsec - BETAmsecPrev) >= _msecBetaAvg) && (!magFusePerformed || fuseMeNow)) {
         FuseSideslip();
         BETAmsecPrev = IMUmsec;
     }
@@ -1582,7 +1600,8 @@ void NavEKF::FuseVelPosNED()
         // form the observation vector and zero velocity and horizontal position observations if in static mode
         if (!staticMode) {
             for (uint8_t i=0; i<=2; i++) observation[i] = velNED[i];
-            for (uint8_t i=3; i<=4; i++) observation[i] = posNE[i-3];
+            observation[3] = gpsPosNE.x + gpsPosGlitchOffsetNE.x;
+            observation[4] = gpsPosNE.y + gpsPosGlitchOffsetNE.y;
         } else {
             for (uint8_t i=0; i<=4; i++) observation[i] = 0.0f;
         }
@@ -1644,14 +1663,13 @@ void NavEKF::FuseVelPosNED()
                 posHealth = true;
                 posFailTime = hal.scheduler->millis();
                 // if timed out or outside the specified glitch radius, increment the offset applied to GPS data to compensate for large GPS position jumps
-                // offset is decayed to zero at 1.0 m/s and limited to a maximum value of 100m before it is applied to
-                // subsequent GPS measurements so we don't have to do any limiting here
                 if (posTimeout || (maxPosInnov2 > sq(float(_gpsGlitchRadiusMax)))) {
-                    posnOffsetNorth += posInnov[0];
-                    posnOffsetEast  += posInnov[1];
-                    // apply the offset to the current GPS measurement
-                    posNE[0] += posInnov[0];
-                    posNE[1] += posInnov[1];
+                    gpsPosGlitchOffsetNE.x += posInnov[0];
+                    gpsPosGlitchOffsetNE.y += posInnov[1];
+                    // limit the radius of the offset to 100m and decay the offset to zero radially
+                    decayGpsOffset();
+                    // reset the position to the current GPS position which will include the glitch correction offset
+                    ResetPosition();
                     // don't fuse data on this time step
                     fusePosData = false;
                 }
@@ -2144,12 +2162,19 @@ void NavEKF::FuseMagnetometer()
         innovMag[obsIndex] = MagPred[obsIndex] - magData[obsIndex];
         // calculate the innovation test ratio
         magTestRatio[obsIndex] = sq(innovMag[obsIndex]) / (sq(_magInnovGate) * varInnovMag[obsIndex]);
-        // test the ratio before fusing data
-        if (magTestRatio[obsIndex] < 1.0f)
+        // check the last values from all componenets and set magnetometer health accordingly
+        magHealth = (magTestRatio[0] < 1.0f && magTestRatio[1] < 1.0f && magTestRatio[2] < 1.0f);
+        // Don't fuse unless all componenets pass. The exception is if the bad health has timed out and we are not a fly forward vehicle
+        // In this case we might as well try using the magnetometer, but with a reduced weighting
+        if (magHealth || ((magTestRatio[obsIndex] < 1.0f) && !assume_zero_sideslip() && magTimeout))
         {
             // correct the state vector
             for (uint8_t j= 0; j<=indexLimit; j++)
             {
+                // If we are forced to use a bad compass, we reduce the weighting by a factor of 4
+                if (!magHealth) {
+                    Kfusion[j] *= 0.25f;
+                }
                 states[j] = states[j] - Kfusion[j] * innovMag[obsIndex];
             }
             // normalise the quaternion states
@@ -2639,6 +2664,10 @@ bool NavEKF::getPosNED(Vector3f &pos) const
 // return body axis gyro bias estimates in rad/sec
 void NavEKF::getGyroBias(Vector3f &gyroBias) const
 {
+    if (dtIMU == 0) {
+        gyroBias.zero();
+        return;
+    }
     gyroBias.x = states[10] / dtIMU;
     gyroBias.y = states[11] / dtIMU;
     gyroBias.z = states[12] / dtIMU;
@@ -2648,8 +2677,13 @@ void NavEKF::getGyroBias(Vector3f &gyroBias) const
 void NavEKF::getAccelBias(Vector3f &accelBias) const
 {
     accelBias.x = IMU1_weighting;
-    accelBias.y = states[22] / dtIMU;
-    accelBias.z = states[13] / dtIMU;
+    if (dtIMU == 0) {
+        accelBias.y = 0;
+        accelBias.z = 0;
+    } else {
+        accelBias.y = states[22] / dtIMU;
+        accelBias.z = states[13] / dtIMU;
+    }
 }
 
 // return the NED wind speed estimates in m/s (positive is air moving in the direction of the axis)
@@ -2710,8 +2744,8 @@ void NavEKF::OnGroundCheck()
         } else {
             onGround = true;
         }
-        // force a yaw alignment if exiting onGround without a compass
-        if (!onGround && prevOnGround && !use_compass()) {
+        // force a yaw alignment if exiting onGround without a compass or if compass is timed out and we are a fly forward vehicle
+        if (!onGround && prevOnGround && (!use_compass() || (magTimeout && assume_zero_sideslip()))) {
             alignYawGPS();
         }
         // If we are flying a fly-forward type vehicle without an airspeed sensor and exiting onGround
@@ -2719,7 +2753,7 @@ void NavEKF::OnGroundCheck()
         // wind speed is equal to the 6m/s. This prevents gains being too high at the start
         // of flight if launching into a headwind until the first turn when the EKF can form a  wind speed
         // estimate
-        if (!onGround && prevOnGround && !useAirspeed() && _ahrs->get_fly_forward()) {
+        if (!onGround && prevOnGround && !useAirspeed() && assume_zero_sideslip()) {
             setWindVelStates();
         }
     }
@@ -2776,6 +2810,12 @@ void NavEKF::ForceSymmetry()
     {
         for (uint8_t j=0; j<=i-1; j++)
         {
+            if (fabsf(P[i][j]) > EKF_COVARIENCE_MAX ||
+                fabsf(P[j][i]) > EKF_COVARIENCE_MAX) {
+                // re-initialise the filter from scratch
+                InitialiseFilterDynamic();
+                return;
+            }
             float temp = 0.5f*(P[i][j] + P[j][i]);
             P[i][j] = temp;
             P[j][i] = temp;
@@ -2810,7 +2850,7 @@ void NavEKF::CopyAndFixCovariances()
     }
     // if we have a non-forward flight vehicle type and no airspeed sensor, we want the wind
     // states to remain zero and want to keep the old variances for these states
-    else if (!useAirspeed() && !_ahrs->get_fly_forward()) {
+    else if (!useAirspeed() && !assume_zero_sideslip()) {
         // copy calculated variances we want to propagate
         for (uint8_t i=0; i<=13; i++) {
             P[i][i] = nextP[i][i];
@@ -2963,12 +3003,9 @@ void NavEKF::readGpsData()
 
         // read latitutde and longitude from GPS and convert to NE position
         const struct Location &gpsloc = _ahrs->get_gps().location();
-        Vector2f posdiff = location_diff(_ahrs->get_home(), gpsloc);
-        // apply a position offset which is used to compensate for GPS jumps
-        // after decaying offset to allow GPS position jumps to be accommodated gradually
+        gpsPosNE = location_diff(_ahrs->get_home(), gpsloc);
+        // decay and limit the position offset which is applied to NE position wherever it is used throughout code to allow GPS position jumps to be accommodated gradually
         decayGpsOffset();
-        posNE[0] = posdiff.x + posnOffsetNorth;
-        posNE[1] = posdiff.y + posnOffsetEast;
     }
 }
 
@@ -3204,8 +3241,7 @@ void  NavEKF::getVariances(float &velVar, float &posVar, float &hgtVar, Vector3f
     magVar.y = sqrtf(magTestRatio.y);
     magVar.z = sqrtf(magTestRatio.z);
     tasVar   = sqrtf(tasTestRatio);
-    offset.x = posnOffsetNorth;
-    offset.y = posnOffsetEast;
+    offset   = gpsPosGlitchOffsetNE;
 }
 
 // zero stored variables - this needs to be called before a full filter initialisation
@@ -3214,8 +3250,6 @@ void NavEKF::ZeroVariables()
     velTimeout = false;
     posTimeout = false;
     hgtTimeout = false;
-    posnOffsetNorth = 0;
-    posnOffsetEast = 0;
     lastStateStoreTime_ms = 0;
     lastFixTime_ms = 0;
     secondLastFixTime_ms = 0;
@@ -3244,13 +3278,14 @@ void NavEKF::ZeroVariables()
     summedDelAng.zero();
     summedDelVel.zero();
     velNED.zero();
+    gpsPosGlitchOffsetNE.zero();
+    gpsPosNE.zero();
     prevTnb.zero();
     memset(&P[0][0], 0, sizeof(P));
     memset(&nextP[0][0], 0, sizeof(nextP));
     memset(&processNoise[0], 0, sizeof(processNoise));
     memset(&storedStates[0], 0, sizeof(storedStates));
     memset(&statetimeStamp[0], 0, sizeof(statetimeStamp));
-    memset(&posNE[0], 0, sizeof(posNE));
 }
 
 // return true if we should use the airspeed sensor
@@ -3278,18 +3313,30 @@ bool NavEKF::use_compass(void) const
 
 // decay GPS horizontal position offset to close to zero at a rate of 1 m/s
 // limit radius to a maximum of 100m
+// apply glitch offset to GPS measurements
 void NavEKF::decayGpsOffset()
 {
     float lapsedTime = 0.001f*float(hal.scheduler->millis() - lastDecayTime_ms);
     lastDecayTime_ms = hal.scheduler->millis();
-    float offsetRadius = pythagorous2(posnOffsetNorth, posnOffsetEast);
+    float offsetRadius = pythagorous2(gpsPosGlitchOffsetNE.x, gpsPosGlitchOffsetNE.y);
     // decay radius if larger than velocity of 1.0 multiplied by lapsed time (plus a margin to prevent divide by zero)
     if (offsetRadius > (lapsedTime + 0.1f)) {
         // calculate scale factor to be applied to both offset components
         float scaleFactor = constrain_float((offsetRadius - lapsedTime), 0.0f, 100.0f) / offsetRadius;
-        posnOffsetNorth *= scaleFactor;
-        posnOffsetEast  *= scaleFactor;
+        gpsPosGlitchOffsetNE.x *= scaleFactor;
+        gpsPosGlitchOffsetNE.y *= scaleFactor;
     }
+}
+
+/*
+  should we assume zero sideslip?
+ */
+bool NavEKF::assume_zero_sideslip(void) const
+{
+    // we don't assume zero sideslip for ground vehicles as EKF could
+    // be quite sensitive to a rapid spin of the ground vehicle if
+    // traction is lost
+    return _ahrs->get_fly_forward() && _ahrs->get_vehicle_class() != AHRS_VEHICLE_GROUND;
 }
 
 #endif // HAL_CPU_CLASS
