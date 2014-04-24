@@ -1,3 +1,6 @@
+/// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
+
+
 #include "RCOutput.h"
 #include <boards.h>
 #include <pwm_in.h>
