@@ -35,7 +35,7 @@
 #include <systick.h>
 #include <boards.h>
 
-#define MINONWIDTH 920 * 2
+#define MINONWIDTH 900 * 2
 #define MAXONWIDTH 2120 * 2
 // PATCH FOR FAILSAFE AND FRSKY
 #define MINOFFWIDTH 1000 * 2
@@ -306,6 +306,10 @@ static inline void pwmIRQHandler(TIM_TypeDef *tim)
 			// compute capture. 1 tick value is 0.5us
 			input->capture = time_on >> 1;
 			}
+
+		    if (pwm_capture_callback) {
+			pwm_capture_callback(i, time_off >> 1);
+		    }
 
 		    // switch state
 		    input->state = 0;

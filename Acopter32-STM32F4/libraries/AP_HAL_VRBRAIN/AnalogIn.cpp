@@ -133,10 +133,10 @@ next_channel:
 
 AP_HAL::AnalogSource* VRBRAINAnalogIn::channel(int16_t ch)
 {
-    if (ch == ANALOG_INPUT_BOARD_VCC) {
+    if ((uint8_t)ch == ANALOG_INPUT_BOARD_VCC) {
             return &_vcc;
     } else {
-        return _create_channel(ch);
+        return _create_channel((uint8_t)ch);
     }
 }
 

@@ -11,11 +11,8 @@ CFLAGS_$(d) :=
 cSRCS_$(d) :=
 
 cppSRCS_$(d) :=
-cppSRCS_$(d) += AP_AutoTune.cpp
-cppSRCS_$(d) += AP_YawController.cpp
-cppSRCS_$(d) += AP_RollController.cpp
-cppSRCS_$(d) += AP_PitchController.cpp
-cppSRCS_$(d) += AP_SteerController.cpp
+cppSRCS_$(d) += SBUS.cpp
+cppSRCS_$(d) += SSS.cpp
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)
