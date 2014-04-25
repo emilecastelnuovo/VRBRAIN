@@ -159,17 +159,17 @@ uint8_t VRBRAINRCInput::read(uint16_t* periods, uint8_t len)
     noInterrupts();
     for (uint8_t i = 0; i < len; i++) {
 	if (g_is_ppmsum == 3) { //SBUS
-	    periods[i] = check_pulse(_sbus->getChannel(i))?_sbus->getChannel(i):periods[i];
+	    periods[i] = constrain_pulse(_sbus->getChannel(i));
 
 	} else if (g_is_ppmsum == 0) { //PWM
-		periods[i] = check_pulse(pwmRead(i))?pwmRead(i):periods[i];
+		periods[i] = constrain_pulse(pwmRead(i));
 
 	} else { //PPMSUM
-		periods[i] = check_pulse(_channel[i])?_channel[i]:periods[i];
+		periods[i] = constrain_pulse(_channel[i]);
 	}
-	interrupts();
     }
-    if (_override[i] > 0)
+    interrupts();
+    if (_override[i] != 0)
 	periods[i] = _override[i];
 
     return len;
@@ -218,7 +218,7 @@ void VRBRAINRCInput::rxIntPPMSUM(uint8_t state, uint16_t value)
     else
 	{
         if (channel_ctr < VRBRAIN_RC_INPUT_NUM_CHANNELS) {
-            _channel[channel_ctr] = value;
+            _channel[channel_ctr] = check_pulse(value)?value:_channel[channel_ctr]; //sanity check
             _last_pulse[channel_ctr] = hal.scheduler->millis();;
             channel_ctr++;
             if (channel_ctr == VRBRAIN_RC_INPUT_NUM_CHANNELS) {
