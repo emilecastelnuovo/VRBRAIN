@@ -18,7 +18,8 @@
 #define WPNAV_LOITER_ACCEL_MIN           25.0f      // minimum acceleration in loiter mode
 
 #define WPNAV_WP_SPEED                  500.0f      // default horizontal speed betwen waypoints in cm/s
-#define WPNAV_WP_SPEED_MIN              100.0f      // minimum horitzontal speed between waypoints in cm/s
+#define WPNAV_WP_SPEED_MIN              100.0f      // minimum horizontal speed between waypoints in cm/s
+#define WPNAV_WP_TRACK_SPEED_MIN         50.0f      // minimum speed along track of the target point the vehicle is chasing in cm/s (used as target slows down before reaching destination)
 #define WPNAV_WP_RADIUS                 200.0f      // default waypoint radius in cm
 
 #define WPNAV_WP_SPEED_UP               250.0f      // default maximum climb velocity
@@ -67,6 +68,9 @@ public:
 
     /// set_pilot_desired_acceleration - sets pilot desired acceleration from roll and pitch stick input
     void set_pilot_desired_acceleration(float control_roll, float control_pitch);
+
+    /// clear_pilot_desired_acceleration - clear pilot desired acceleration
+    void clear_pilot_desired_acceleration() { _pilot_accel_fwd_cms = 0.0f; _pilot_accel_rgt_cms = 0.0f; }
 
     /// get_stopping_point - returns vector to stopping point based on a horizontal position and velocity
     void get_loiter_stopping_point_xy(Vector3f& stopping_point) const;
@@ -129,6 +133,10 @@ public:
 
     /// update_wpnav - run the wp controller - should be called at 100hz or higher
     void update_wpnav();
+
+    // check_wp_leash_length - check recalc_wp_leash flag and calls calculate_wp_leash_length() if necessary
+    //  should be called after _pos_control.update_xy_controller which may have changed the position controller leash lengths
+    void check_wp_leash_length();
 
     /// calculate_wp_leash_length - calculates track speed, acceleration and leash lengths for waypoint controller
     void calculate_wp_leash_length();
@@ -200,6 +208,8 @@ protected:
     struct wpnav_flags {
         uint8_t reached_destination     : 1;    // true if we have reached the destination
         uint8_t fast_waypoint           : 1;    // true if we should ignore the waypoint radius and consider the waypoint complete once the intermediate target has reached the waypoint
+        uint8_t slowing_down            : 1;    // true when target point is slowing down before reaching the destination
+        uint8_t recalc_wp_leash         : 1;    // true if we need to recalculate the leash lengths because of changes in speed or acceleration
         SegmentType segment_type        : 1;    // active segment is either straight or spline
     } _flags;
 
@@ -209,6 +219,12 @@ protected:
 
     /// get_bearing_cd - return bearing in centi-degrees between two positions
     float get_bearing_cd(const Vector3f &origin, const Vector3f &destination) const;
+
+    /// calc_slow_down_distance - calculates distance before waypoint that target point should begin to slow-down assuming it is traveling at full speed
+    void calc_slow_down_distance(float speed_cms, float accel_cmss);
+
+    /// get_slow_down_speed - returns target speed of target point based on distance from the destination (in cm)
+    float get_slow_down_speed(float dist_from_dest_cm, float accel_cmss);
 
     /// spline protected functions
 
@@ -254,6 +270,7 @@ protected:
     float       _track_accel;           // acceleration along track
     float       _track_speed;           // speed in cm/s along track
     float       _track_leash_length;    // leash length along track
+    float       _slow_down_dist;        // vehicle should begin to slow down once it is within this distance from the destination
 
     // spline variables
     float		_spline_time;			// current spline time between origin and destination
@@ -261,8 +278,6 @@ protected:
     Vector3f    _spline_destination_vel;// the target velocity vector at the destination point of the spline segment
     Vector3f    _hermite_spline_solution[4]; // array describing spline path between origin and destination
     float       _spline_vel_scaler;		//
-    float       _spline_slow_down_dist; // vehicle should begin to slow down once it is within this distance from the destination
-                                        // To-Do: this should be used for straight segments as well
     float       _yaw;                   // heading according to yaw
 };
 #endif	// AC_WPNAV_H
