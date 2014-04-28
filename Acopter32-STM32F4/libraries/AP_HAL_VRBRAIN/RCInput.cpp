@@ -96,7 +96,7 @@ void VRBRAINRCInput::init(void* machtnichts)
     clear_overrides();
 }
 bool VRBRAINRCInput::new_input() {
-    if ((hal.scheduler->millis() - _last_input_interrupt_time) > 50)
+    if ((hal.scheduler->millis() - _last_input_interrupt_time) > 100)
 	_valid_channels = 0; // Lost RC Input?
     return _valid_channels != 0;
 }
@@ -130,26 +130,15 @@ uint16_t VRBRAINRCInput::read(uint8_t ch)
 
     noInterrupts();
     if (g_is_ppmsum == 3) {
-	data = constrain_pulse(_sbus->getChannel(ch));
+	data = _sbus->getChannel(ch);
 
-    }else if (g_is_ppmsum == 0)
-	{
-	//data = rcPinValue[ch];
-	data = constrain_pulse(pwmRead(ch));
-	}
-    else
-	{
-	data = constrain_pulse(_channel[ch]);
-	pulse = _last_pulse[ch];
-
+    } else {
+	data = _channel[ch];
     }
     interrupts();
 
     /* Check for override */
     uint16_t over = _override[ch];
-
-    if((g_is_ppmsum == 1) && (ch == 2) && (systick_uptime() - pulse > 100))
-	data = 900;
 
     return (over == 0) ? data : over;
     }
@@ -159,18 +148,18 @@ uint8_t VRBRAINRCInput::read(uint16_t* periods, uint8_t len)
     noInterrupts();
     for (uint8_t i = 0; i < len; i++) {
 	if (g_is_ppmsum == 3) { //SBUS
-	    periods[i] = constrain_pulse(_sbus->getChannel(i));
-
-	} else if (g_is_ppmsum == 0) { //PWM
-		periods[i] = constrain_pulse(pwmRead(i));
-
-	} else { //PPMSUM
-		periods[i] = constrain_pulse(_channel[i]);
+	    periods[i] = _sbus->getChannel(i);
+	} else {
+	    periods[i] = _channel[i];
 	}
     }
     interrupts();
-    if (_override[i] != 0)
-	periods[i] = _override[i];
+
+    for (uint8_t i = 0; i < len; i++) {
+	if (_override[i] != 0) {
+	    periods[i] = _override[i];
+	}
+    }
 
     return len;
     }
