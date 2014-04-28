@@ -763,6 +763,8 @@ AP_Param param_loader(var_info, MISSION_START_BYTE);
   2    = 200hz
   4    = 100hz
   8    = 50hz
+  10   = 40Hz
+  13   = 30Hz
   20   = 20hz
   40   = 10hz
   133  = 3hz
@@ -771,7 +773,7 @@ AP_Param param_loader(var_info, MISSION_START_BYTE);
   
  */
 static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
-    { rc_loop,               4,     140 },
+    { rc_loop,               4,     160 },
     { throttle_loop,         8,     450 },
     { update_GPS,            8,     900 },
     { update_batt_compass,  40,     720 },
@@ -787,7 +789,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 #if FRAME_CONFIG == HELI_FRAME
     { check_dynamic_flight,  8,     100 },
 #endif
-    { update_notify,         8,     100 },
+    { update_notify,         8,     120 },
     { one_hz_loop,         400,     420 },
     { crash_check,          40,      20 },
     { gcs_check_input,	     8,    550 },
@@ -798,7 +800,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { update_copter_leds,   40,      5 },
 #endif
     { update_mount,          8,     450 },
-    { ten_hz_logging_loop,  40,     300 },
+    { ten_hz_logging_loop,  10,     150 }, //running at 40Hz to chunk up 4 data logging
     { fifty_hz_logging_loop, 8,     220 },
     { perf_update,        4000,     200 },
     { read_receiver_rssi,   40,      50 },
@@ -1060,21 +1062,40 @@ static void update_batt_compass(void)
     throttle_integrator += g.rc_3.servo_out;
 }
 
-// ten_hz_logging_loop
-// should be run at 10hz
+// ten_hz_logging_loop called at 40Hz to chunk up logging on dataflash
+// should be run at 40hz
 static void ten_hz_logging_loop()
 {
-    if (g.log_bitmask & MASK_LOG_ATTITUDE_MED) {
-        Log_Write_Attitude();
-    }
-    if (g.log_bitmask & MASK_LOG_RCIN) {
-        DataFlash.Log_Write_RCIN();
-    }
-    if (g.log_bitmask & MASK_LOG_RCOUT) {
-        DataFlash.Log_Write_RCOUT();
-    }
-    if (g.log_bitmask & MASK_LOG_NTUN && mode_requires_GPS(control_mode)) {
-        Log_Write_Nav_Tuning();
+    static uint8_t counter = 0;
+    switch (counter) {
+    case 0:
+	if (g.log_bitmask & MASK_LOG_ATTITUDE_MED) {
+	    Log_Write_Attitude();
+	}
+	counter++;
+	break;
+    case 1:
+	if (g.log_bitmask & MASK_LOG_ATTITUDE_MED) {
+	    Log_Write_Attitude();
+	}
+	counter++;
+	break;
+    case 2:
+	if (g.log_bitmask & MASK_LOG_RCIN) {
+	    DataFlash.Log_Write_RCIN();
+	}
+	counter++;
+	break;
+
+    case 3:
+	if (g.log_bitmask & MASK_LOG_RCOUT) {
+	    DataFlash.Log_Write_RCOUT();
+	}
+	if ((g.log_bitmask & MASK_LOG_NTUN) && mode_requires_GPS(control_mode)) {
+	    Log_Write_Nav_Tuning();
+	}
+	counter = 0;
+	break;
     }
 }
 
