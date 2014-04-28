@@ -319,7 +319,7 @@ static inline void pwmIRQHandler(TIM_TypeDef *tim)
 			}
 
 		    if (pwm_capture_callback) {
-			pwm_capture_callback(i, time_off >> 1);
+			pwm_capture_callback(i, time_on >> 1);
 		    }
 
 		    // switch state

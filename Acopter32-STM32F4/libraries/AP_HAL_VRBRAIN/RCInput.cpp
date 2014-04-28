@@ -103,11 +103,7 @@ bool VRBRAINRCInput::new_input() {
 
 uint8_t VRBRAINRCInput::num_channels()
     {
-    if(g_is_ppmsum != 1 )
-	return 4;
-    else
 	return _valid_channels;
-
     }
 
 /* constrain captured pulse to be between min and max pulsewidth. */
@@ -131,6 +127,7 @@ uint16_t VRBRAINRCInput::read(uint8_t ch)
     noInterrupts();
     if (g_is_ppmsum == 3) {
 	data = _sbus->getChannel(ch);
+	_valid_channels = 14;
 
     } else {
 	data = _channel[ch];
@@ -149,6 +146,7 @@ uint8_t VRBRAINRCInput::read(uint16_t* periods, uint8_t len)
     for (uint8_t i = 0; i < len; i++) {
 	if (g_is_ppmsum == 3) { //SBUS
 	    periods[i] = _sbus->getChannel(i);
+	    _valid_channels = 14;
 	} else {
 	    periods[i] = _channel[i];
 	}
@@ -223,7 +221,7 @@ void VRBRAINRCInput::rxIntPWM(uint8_t channel, uint16_t value)
     _last_input_interrupt_time = hal.scheduler->millis();
     _channel[channel] = value;
     _last_pulse[channel] = hal.scheduler->millis();
-    _valid_channels = 8;
+    _valid_channels = VRBRAIN_RC_INPUT_NUM_CHANNELS;
     }
 
 void VRBRAINRCInput::_detect_rc(){
