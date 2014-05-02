@@ -62,8 +62,7 @@ public:
     void set_alt_max(float alt) { _alt_max = alt; }
 
     /// set_speed_z - sets maximum climb and descent rates
-    /// To-Do: call this in the main code as part of flight mode initialisation
-    ///     speed_down should be a negative number
+    ///     speed_down can be positive or negative but will always be interpreted as a descent speed
     ///     leash length will be recalculated the next time update_z_controller() is called
     void set_speed_z(float speed_down, float speed_up);
 
@@ -166,6 +165,9 @@ public:
     /// update_xy_controller - run the horizontal position controller - should be called at 100hz or higher
     ///     when use_desired_velocity is true the desired velocity (i.e. feed forward) is incorporated at the pos_to_rate step
     void update_xy_controller(bool use_desired_velocity);
+
+    /// set_target_to_stopping_point_xy - sets horizontal target to reasonable stopping position in cm from home
+    void set_target_to_stopping_point_xy();
 
     /// get_stopping_point_xy - calculates stopping point based on current position, velocity, vehicle acceleration
     ///     distance_max allows limiting distance to stopping point

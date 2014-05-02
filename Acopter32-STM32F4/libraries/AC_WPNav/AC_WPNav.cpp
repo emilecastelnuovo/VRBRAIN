@@ -61,6 +61,15 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] PROGMEM = {
     // @User: Standard
     AP_GROUPINFO("ACCEL",       5, AC_WPNav, _wp_accel_cms, WPNAV_ACCELERATION),
 
+    // @Param: ACCEL_Z
+    // @DisplayName: Waypoint Vertical Acceleration
+    // @Description: Defines the vertical acceleration in cm/s/s used during missions
+    // @Units: cm/s/s
+    // @Range: 50 500
+    // @Increment: 10
+    // @User: Standard
+    AP_GROUPINFO("ACCEL_Z",     6, AC_WPNav, _wp_accel_z_cms, WPNAV_WP_ACCEL_Z_DEFAULT),
+
     AP_GROUPEND
 };
 
@@ -125,20 +134,18 @@ void AC_WPNav::set_loiter_target(const Vector3f& position, bool reset_I)
 /// init_loiter_target - initialize's loiter position and feed-forward velocity from current pos and velocity
 void AC_WPNav::init_loiter_target()
 {
-	Vector3f curr_vel = _inav->get_velocity();
+    Vector3f curr_vel = _inav->get_velocity();
 
-	// set target position
-    _pos_control.set_pos_target(_inav->get_position());
+    // initialise pos controller speed and acceleration
+    _pos_control.set_speed_xy(_loiter_speed_cms);
+    _loiter_accel_cms = _loiter_speed_cms/2.0f;
+    _pos_control.set_accel_xy(_loiter_accel_cms);
+
+    // set target position
+    _pos_control.set_target_to_stopping_point_xy();
 
     // initialise feed forward velocities to zero
     _pos_control.set_desired_velocity(curr_vel.x, curr_vel.y);
-
-    // initialise pos controller speed
-    _pos_control.set_speed_xy(_loiter_speed_cms);
-
-    // initialise pos controller acceleration
-    _loiter_accel_cms = _loiter_speed_cms/2.0f;
-    _pos_control.set_accel_xy(_loiter_accel_cms);
 
     // initialise pilot input
     _pilot_accel_fwd_cms = 0;
@@ -264,12 +271,12 @@ void AC_WPNav::update_loiter()
 /// waypoint navigation
 ///
 
-/// set_horizontal_velocity - allows main code to pass target horizontal velocity for wp navigation
-void AC_WPNav::set_horizontal_velocity(float velocity_cms)
+/// set_speed_xy - allows main code to pass target horizontal velocity for wp navigation
+void AC_WPNav::set_speed_xy(float speed_cms)
 {
     // range check new target speed and update position controller
     if (_wp_speed_cms >= WPNAV_WP_SPEED_MIN) {
-        _wp_speed_cms = velocity_cms;
+        _wp_speed_cms = speed_cms;
         _pos_control.set_speed_xy(_wp_speed_cms);
         // flag that wp leash must be recalculated
         _flags.recalc_wp_leash = true;
@@ -323,6 +330,7 @@ void AC_WPNav::set_wp_origin_and_destination(const Vector3f& origin, const Vecto
     _pos_control.set_speed_xy(_wp_speed_cms);
     _pos_control.set_accel_xy(_wp_accel_cms);
     _pos_control.set_speed_z(-_wp_speed_down_cms, _wp_speed_up_cms);
+    _pos_control.set_accel_z(_wp_accel_z_cms);
     _pos_control.calc_leash_length_xy();
     _pos_control.calc_leash_length_z();
 
@@ -552,11 +560,11 @@ void AC_WPNav::calculate_wp_leash_length()
         _track_speed = _wp_speed_cms/pos_delta_unit_xy;
         _track_leash_length = _pos_control.get_leash_xy()/pos_delta_unit_xy;
     }else if(pos_delta_unit_xy == 0){
-        _track_accel = _pos_control.get_accel_z()/pos_delta_unit_z;
+        _track_accel = _wp_accel_z_cms/pos_delta_unit_z;
         _track_speed = speed_z/pos_delta_unit_z;
         _track_leash_length = leash_z/pos_delta_unit_z;
     }else{
-        _track_accel = min(_pos_control.get_accel_z()/pos_delta_unit_z, _wp_accel_cms/pos_delta_unit_xy);
+        _track_accel = min(_wp_accel_z_cms/pos_delta_unit_z, _wp_accel_cms/pos_delta_unit_xy);
         _track_speed = min(speed_z/pos_delta_unit_z, _wp_speed_cms/pos_delta_unit_xy);
         _track_leash_length = min(leash_z/pos_delta_unit_z, _pos_control.get_leash_xy()/pos_delta_unit_xy);
     }

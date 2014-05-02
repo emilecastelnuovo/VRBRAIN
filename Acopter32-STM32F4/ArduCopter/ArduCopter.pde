@@ -228,7 +228,7 @@ static DataFlash_Empty DataFlash;
 // the rate we run the main loop at
 ////////////////////////////////////////////////////////////////////////////////
 #if MAIN_LOOP_RATE == 400
-static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_1000HZ;
+static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_400HZ;
 #else
 static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_100HZ;
 #endif
@@ -403,8 +403,9 @@ static union {
         uint8_t usb_connected       : 1; // 13      // true if APM is powered from USB connection
         uint8_t rc_receiver_present : 1; // 14  // true if we have an rc receiver present (i.e. if we've ever received an update
         uint8_t compass_mot         : 1; // 15  // true if we are currently performing compassmot calibration
+        uint8_t motor_test          : 1; // 16  // true if we are currently performing the motors test
     };
-    uint16_t value;
+    uint32_t value;
 } ap;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1469,7 +1470,7 @@ static void tuning(){
 
     case CH6_WP_SPEED:
         // set waypoint navigation horizontal speed to 0 ~ 1000 cm/s
-        wp_nav.set_horizontal_velocity(g.rc_6.control_in);
+        wp_nav.set_speed_xy(g.rc_6.control_in);
         break;
 
     // Acro roll pitch gain
