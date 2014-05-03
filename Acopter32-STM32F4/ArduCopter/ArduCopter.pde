@@ -228,7 +228,7 @@ static DataFlash_Empty DataFlash;
 // the rate we run the main loop at
 ////////////////////////////////////////////////////////////////////////////////
 #if MAIN_LOOP_RATE == 400
-static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_400HZ;
+static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_1000HZ;
 #else
 static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_100HZ;
 #endif
