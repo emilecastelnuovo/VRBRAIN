@@ -91,7 +91,9 @@ public:
     bool get_relative_position_NED(Vector3f &vec) const;
 
     void set_ekf_use(bool setting) { _ekf_use.set(setting); }
-    bool get_ekf_use() { return _ekf_use.get(); }
+
+    // is the AHRS subsystem healthy?
+    bool healthy(void);
 
 private:
     bool using_EKF(void) const;
