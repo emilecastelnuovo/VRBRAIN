@@ -96,7 +96,7 @@ void VRBRAINRCInput::init(void* machtnichts)
     clear_overrides();
 }
 bool VRBRAINRCInput::new_input() {
-    if ((hal.scheduler->millis() - _last_input_interrupt_time) > 100)
+    if (g_is_ppmsum < 3 && (hal.scheduler->millis() - _last_input_interrupt_time) > 500)
 	_valid_channels = 0; // Lost RC Input?
     return _valid_channels != 0;
 }
@@ -122,7 +122,6 @@ static inline bool check_pulse(uint16_t p) {
 uint16_t VRBRAINRCInput::read(uint8_t ch)
     {
     uint16_t data;
-    uint32_t pulse;
 
     noInterrupts();
     if (g_is_ppmsum == 3) {
@@ -262,7 +261,7 @@ bool VRBRAINRCInput::_sbus_dct(){
 
     //set pin7 as output and pin 3 as input
     hal.gpio->pinMode(pin7, OUTPUT);
-    hal.gpio->pinMode(pin8, INPUT);
+    hal.gpio->pinMode(pin8, INPUT_PULLUP);
 
     //default pin8 to 0
     hal.gpio->write(pin8, 0);
@@ -357,7 +356,7 @@ bool VRBRAINRCInput::_ppmsum_dct(){
 
         //set pin2 as output and pin 3 as input
         hal.gpio->pinMode(pin2, OUTPUT);
-        hal.gpio->pinMode(pin3, INPUT);
+        hal.gpio->pinMode(pin3, INPUT_PULLUP);
 
         //default pin3 to 0
         hal.gpio->write(pin3, 0);

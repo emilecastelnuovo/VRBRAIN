@@ -1,5 +1,40 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
+/****************************************************************************
+ *
+ *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/* Code partially taken from the PX4 NuttX firmware */
+
 #include <AP_HAL.h>
 #include "SBUS.h"
 #include <usart.h>
@@ -50,96 +85,109 @@ void SBUSClass::begin() {
 		_channels[i]      = 0;
 	}
 	_failsafe = 0;
-	_last_update = 0;
+	_last_update = hal.scheduler->micros();
 
 	_serial->begin(100000,1);
 
 	hal.scheduler->register_timer_process(AP_HAL_MEMBERPROC(&SBUSClass::_process));
 }
 
+
+
 void SBUSClass::_process() {
-	static byte buffer[25];
-	static byte buffer_index = 0;
-	
-	while (_serial->available()) {
-		byte rx = _serial->read();
-		if (buffer_index == 0 && rx != SBUS_STARTBYTE) {
-			//incorrect start byte, out of sync
-			_decoderErrorFrames++;
-			continue;
-		}
-		
-		buffer[buffer_index++] = rx;
 
-		if (buffer_index == 25) {
-			buffer_index = 0;
-			if (buffer[24] != SBUS_ENDBYTE) {
-				//incorrect end byte, out of sync
-				_decoderErrorFrames++;
-				continue;
-			}
-			_goodFrames++;
-			
-			_channels[0]  = ((buffer[1]    |buffer[2]<<8)                 & 0x07FF);
-			_channels[1]  = ((buffer[2]>>3 |buffer[3]<<5)                 & 0x07FF);
-			_channels[2]  = ((buffer[3]>>6 |buffer[4]<<2 |buffer[5]<<10)  & 0x07FF);
-			_channels[3]  = ((buffer[5]>>1 |buffer[6]<<7)                 & 0x07FF);
-			_channels[4]  = ((buffer[6]>>4 |buffer[7]<<4)                 & 0x07FF);
-			_channels[5]  = ((buffer[7]>>7 |buffer[8]<<1 |buffer[9]<<9)   & 0x07FF);
-			_channels[6]  = ((buffer[9]>>2 |buffer[10]<<6)                & 0x07FF);
-			_channels[7]  = ((buffer[10]>>5|buffer[11]<<3)                & 0x07FF);
-			_channels[8]  = ((buffer[12]   |buffer[13]<<8)                & 0x07FF);
-			_channels[9]  = ((buffer[13]>>3|buffer[14]<<5)                & 0x07FF);
-			_channels[10] = ((buffer[14]>>6|buffer[15]<<2|buffer[16]<<10) & 0x07FF);
-			_channels[11] = ((buffer[16]>>1|buffer[17]<<7)                & 0x07FF);
-			_channels[12] = ((buffer[17]>>4|buffer[18]<<4)                & 0x07FF);
-			_channels[13] = ((buffer[18]>>7|buffer[19]<<1|buffer[20]<<9)  & 0x07FF);
-			_channels[14] = ((buffer[20]>>2|buffer[21]<<6)                & 0x07FF);
-			_channels[15] = ((buffer[21]>>5|buffer[22]<<3)                & 0x07FF);
+	uint32_t now = hal.scheduler->micros();
 
-			((buffer[23])      & 0x0001) ? _channels[16] = 2047: _channels[16] = 0;
-			((buffer[23] >> 1) & 0x0001) ? _channels[17] = 2047: _channels[17] = 0;
+	if((now-_last_update) > 3000 && _serial->available() >= 25) {
 
-			if ((buffer[23] >> 3) & 0x0001) {
-				_failsafe = SBUS_FAILSAFE_ACTIVE;
-			} else {
-				_failsafe = SBUS_FAILSAFE_INACTIVE;
-			}
+	    for (uint8_t i = 0; i < SBUS_FRAME_SIZE; i++) {
+		    frame[i] = _serial->read();
+	    }
+	    if (frame[0] != SBUS_STARTBYTE) {
+		//incorrect start byte, out of sync
+		_decoderErrorFrames++;
+		return;
+	    }
+	    switch (frame[24]){
+		case 0x00:
+		    /* this is S.BUS 1 */
+		    break;
+		case 0x03:
+		    /* S.BUS 2 SLOT0: RX battery and external voltage */
+		    break;
+		case 0x83:
+		    /* S.BUS 2 SLOT1 */
+		    break;
+		case 0x43:
+		case 0xC3:
+		case 0x23:
+		case 0xA3:
+		case 0x63:
+		case 0xE3:
+		    break;
+		default:
+		    /* we expect one of the bits above, but there are some we don't know yet */
+		    break;
+		    //incorrect end byte, out of sync
+	    }
 
-			if ((buffer[23] >> 2) & 0x0001) {
-				_lostFrames++;
-			}
+	    for (uint8_t channel = 0; channel < SBUS_INPUT_CHANNELS; channel++) {
+		    uint16_t value = 0;
 
-			_last_update = hal.scheduler->millis();
-		}
+		    for (uint8_t pick = 0; pick < 3; pick++) {
+			    const struct sbus_bit_pick *decode = &sbus_decoder[channel][pick];
+
+			    if (decode->mask != 0) {
+				    unsigned piece = frame[1 + decode->byte];
+				    piece >>= decode->rshift;
+				    piece &= decode->mask;
+				    piece <<= decode->lshift;
+
+				    value |= piece;
+			    }
+		    }
+
+
+		    /* convert 0-2048 values to 1000-2000 ppm encoding in a not too sloppy fashion */
+		    _channels[channel] = (uint16_t)(value * SBUS_SCALE_FACTOR +.5f) + SBUS_SCALE_OFFSET;
+	    }
+	    /* channel 17 (index 16) */
+	    _channels[16] = (frame[SBUS_FLAGS_BYTE] & (1 << 0)) * 1000 + 998;
+	    /* channel 18 (index 17) */
+	    _channels[17] = (frame[SBUS_FLAGS_BYTE] & (1 << 1)) * 1000 + 998;
+
+	    if (frame[SBUS_FLAGS_BYTE] & (1 << SBUS_FAILSAFE_BIT)) { /* failsafe */
+		_failsafe = SBUS_FAILSAFE_ACTIVE;
+		_lostFrames++;
+	    } else if (frame[SBUS_FLAGS_BYTE] & (1 << SBUS_FRAMELOST_BIT)) {
+		_failsafe = SBUS_FAILSAFE_INACTIVE;
+		_lostFrames++;
+	    } else {
+		 _failsafe = SBUS_FAILSAFE_INACTIVE;
+	    }
+
+	    _last_update = hal.scheduler->micros();
 	}
+
 }
 
-uint16_t SBUSClass::getChannel(int channel) {
+uint16_t SBUSClass::getChannel(uint8_t channel) {
 	if (channel < 0 or channel > 17) {
 		return 0;
 	} else {
-	    if(hal.scheduler->millis() - _last_update > 500) {
-		_failsafe = 1;
+	    if(hal.scheduler->micros() - _last_update > 500000) {
+		_failsafe = SBUS_FAILSAFE_ACTIVE;
 	    }
 	    if (channel == 2 && _failsafe) { //hardcoded failsafe action if RX is in failsafe, put throttle to 900
 		return 900;
 	    } else {
-		return (uint16_t)(_channels[channel] * SBUS_SCALE_FACTOR +.5f) + SBUS_SCALE_OFFSET;
+		return (uint16_t)(_channels[channel]);
 	    }
 	}
 }
 
 uint16_t SBUSClass::getFailsafeStatus() {
 	return _failsafe;
-}
-
-uint16_t SBUSClass::getFrameLoss() {
-	return (int) ((_lostFrames + _decoderErrorFrames) * 100 / (_goodFrames + _lostFrames + _decoderErrorFrames));
-}
-
-uint64_t SBUSClass::getGoodFrames() {
-	return _goodFrames;
 }
 
 uint64_t SBUSClass::getLostFrames() {
