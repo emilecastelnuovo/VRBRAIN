@@ -34,7 +34,7 @@
 #define MAG_NOISE_DEFAULT       0.05f
 #define GYRO_PNOISE_DEFAULT     0.015f
 #define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    1E-07f
+#define GBIAS_PNOISE_DEFAULT    1E-06f
 #define ABIAS_PNOISE_DEFAULT    0.0001f
 #define MAGE_PNOISE_DEFAULT     0.0003f
 #define MAGB_PNOISE_DEFAULT     0.0003f
@@ -55,8 +55,8 @@
 #define MAG_NOISE_DEFAULT       0.05f
 #define GYRO_PNOISE_DEFAULT     0.015f
 #define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    1E-07f
-#define ABIAS_PNOISE_DEFAULT    0.0001f
+#define GBIAS_PNOISE_DEFAULT    1E-06f
+#define ABIAS_PNOISE_DEFAULT    0.0002f
 #define MAGE_PNOISE_DEFAULT     0.0003f
 #define MAGB_PNOISE_DEFAULT     0.0003f
 #define VEL_GATE_DEFAULT        2
@@ -76,17 +76,17 @@
 #define MAG_NOISE_DEFAULT       0.05f
 #define GYRO_PNOISE_DEFAULT     0.015f
 #define ACC_PNOISE_DEFAULT      0.25f
-#define GBIAS_PNOISE_DEFAULT    1E-07f
-#define ABIAS_PNOISE_DEFAULT    0.0001f
+#define GBIAS_PNOISE_DEFAULT    1E-06f
+#define ABIAS_PNOISE_DEFAULT    0.0002f
 #define MAGE_PNOISE_DEFAULT     0.0003f
 #define MAGB_PNOISE_DEFAULT     0.0003f
-#define VEL_GATE_DEFAULT        3
+#define VEL_GATE_DEFAULT        2
 #define POS_GATE_DEFAULT        10
 #define HGT_GATE_DEFAULT        10
 #define MAG_GATE_DEFAULT        3
 #define MAG_CAL_DEFAULT         0
 #define GLITCH_ACCEL_DEFAULT    150
-#define GLITCH_RADIUS_DEFAULT   50
+#define GLITCH_RADIUS_DEFAULT   15
 
 #endif // APM_BUILD_DIRECTORY
 
@@ -195,7 +195,7 @@ const AP_Param::GroupInfo NavEKF::var_info[] PROGMEM = {
     // @Param: ABIAS_PNOISE
     // @DisplayName: Accelerometer bias process noise (m/s^2)
     // @Description: This noise controls the growth of the vertical acelerometer bias state error estimate. Increasing it makes accelerometer bias estimation faster and noisier.
-    // @Range: 0.0001 - 0.001
+    // @Range: 0.00001 - 0.001
     // @User: advanced
     AP_GROUPINFO("ABIAS_PNOISE",    11, NavEKF, _accelBiasProcessNoise, ABIAS_PNOISE_DEFAULT),
 
@@ -354,7 +354,7 @@ NavEKF::NavEKF(const AP_AHRS *ahrs, AP_Baro &baro) :
     mag_state.DCM.identity();
     IMU1_weighting = 0.5f;
     lastDivergeTime_ms = 0;
-    filterDiverged = false;
+    memset(&faultStatus, 0, sizeof(faultStatus));
 }
 
 // Check basic filter health metrics and return a consolidated health status
@@ -369,7 +369,7 @@ bool NavEKF::healthy(void) const
     if (state.velocity.is_nan()) {
         return false;
     }
-    if (filterDiverged) {
+    if (filterDiverged || (hal.scheduler->millis() - lastDivergeTime_ms < 10000)) {
         return false;
     }
     // If measurements have failed innovation consistency checks for long enough to time-out
@@ -950,7 +950,7 @@ void NavEKF::CovariancePrediction()
         windVelSigma  = 0.0f;
     }
     dAngBiasSigma = dt * constrain_float(_gyroBiasProcessNoise, 1e-7f, 1e-5f);
-    dVelBiasSigma = dt * constrain_float(_accelBiasProcessNoise, 1e-4f, 1e-3f);
+    dVelBiasSigma = dt * constrain_float(_accelBiasProcessNoise, 1e-5f, 1e-3f);
     if (!inhibitMagStates) {
         magEarthSigma = dt * constrain_float(_magEarthProcessNoise, 1e-4f, 1e-2f);
         magBodySigma  = dt * constrain_float(_magBodyProcessNoise, 1e-4f, 1e-2f);
@@ -1823,8 +1823,10 @@ void NavEKF::FuseVelPosNED()
                     Kfusion[i] = P[i][stateIndex]*SK;
                 }
                 // Only height observations are used to update z accel bias estimate
-                if (obsIndex == 5) {
-                    Kfusion[13] = P[13][stateIndex]*SK;
+                // Protect Kalman gain from ill-conditioning
+                // Don't update Z accel bias if off-level by greater than 60 degrees to avoid scale factor error effects
+                if (obsIndex == 5 && prevTnb.c.z > 0.5f) {
+                    Kfusion[13] = constrain_float(P[13][stateIndex]*SK,-1.0f,0.0f);
                 } else {
                     Kfusion[13] = 0.0f;
                 }
@@ -3320,7 +3322,6 @@ void NavEKF::ZeroVariables()
     dt = 0;
     hgtMea = 0;
     storeIndex = 0;
-    memset(&faultStatus, 0, sizeof(faultStatus));
     lastGyroBias.zero();
 	prevDelAng.zero();
     lastAngRate.zero();
@@ -3395,20 +3396,24 @@ bool NavEKF::assume_zero_sideslip(void) const
 void NavEKF::checkDivergence()
 {
     // If filter is diverging, then fail for 10 seconds
+    // delay checking to allow bias estimate to settle after reset
     // filter divergence is detected by looking for rapid changes in gyro bias
     Vector3f tempVec = state.gyro_bias - lastGyroBias;
     float tempLength = tempVec.length();
     if (tempLength != 0.0f) {
-        scaledDeltaGyrBiasLgth = 5e4f*tempVec.length()/dtIMU;
+        float temp = constrain_float((P[10][10] + P[11][11] + P[12][12]),1e-12f,1e-8f);
+        scaledDeltaGyrBiasLgth = (1e-6f / temp) * tempVec.length() / dtIMU;
     }
     bool divergenceDetected = (scaledDeltaGyrBiasLgth > 1.0f);
     lastGyroBias = state.gyro_bias;
-    if (divergenceDetected) {
-        filterDiverged = true;
-        faultStatus.diverged = true;
-        lastDivergeTime_ms = hal.scheduler->millis();
-    } else if (hal.scheduler->millis() - lastDivergeTime_ms > 10000) {
-        filterDiverged = false;
+    if (hal.scheduler->millis() - lastDivergeTime_ms > 10000) {
+        if (divergenceDetected) {
+            filterDiverged = true;
+            faultStatus.diverged = true;
+            lastDivergeTime_ms = hal.scheduler->millis();
+        } else {
+            filterDiverged = false;
+        }
     }
 
 }

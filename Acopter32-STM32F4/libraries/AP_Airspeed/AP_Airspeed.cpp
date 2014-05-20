@@ -130,7 +130,7 @@ float AP_Airspeed::get_pressure(void)
         return 0;
     }
     float pressure = 0;
-    if (_pin == 65) {
+    if (_pin == AP_AIRSPEED_I2C_PIN) {
        // _healthy = digital.get_differential_pressure(pressure);
     } else {
         _healthy = analog.get_differential_pressure(pressure);

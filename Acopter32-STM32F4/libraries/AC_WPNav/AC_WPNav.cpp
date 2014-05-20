@@ -114,26 +114,31 @@ AC_WPNav::AC_WPNav(const AP_InertialNav& inav, const AP_AHRS& ahrs, AC_PosContro
 /// loiter controller
 ///
 
-/// set_loiter_target in cm from home
-void AC_WPNav::set_loiter_target(const Vector3f& position, bool reset_I)
+/// init_loiter_target in cm from home
+void AC_WPNav::init_loiter_target(const Vector3f& position, bool reset_I)
 {
     // if reset_I is false we warn position controller not to reset I terms
     if (!reset_I) {
         _pos_control.keep_xy_I_terms();
     }
+    
+    // initialise position controller
+    _pos_control.init_xy_controller();
+
+    // initialise pos controller speed and acceleration
+    _pos_control.set_speed_xy(_loiter_speed_cms);
+    _loiter_accel_cms = _loiter_speed_cms/2.0f;
+    _pos_control.set_accel_xy(_loiter_accel_cms);
 
     // set target position
-    _pos_control.set_pos_target(position);
+    _pos_control.set_xy_target(position.x, position.y);
 
     // initialise feed forward velocity to zero
     _pos_control.set_desired_velocity(0,0);
 
-    // initialise pos controller speed
-    _pos_control.set_speed_xy(_loiter_speed_cms);
-
-    // initialise pos controller acceleration
-    _loiter_accel_cms = _loiter_speed_cms/2.0f;
-    _pos_control.set_accel_xy(_loiter_accel_cms);
+    // initialise desired accel and add fake wind
+    _loiter_desired_accel.x = 0;
+    _loiter_desired_accel.y = 0;
 
     // initialise pilot input
     _pilot_accel_fwd_cms = 0;
