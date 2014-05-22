@@ -14,6 +14,7 @@
 #define AP_COMPASS_TYPE_HMC5843  0x02
 #define AP_COMPASS_TYPE_HMC5883L 0x03
 #define AP_COMPASS_TYPE_PX4      0x04
+#define AP_COMPASS_TYPE_VRBRAIN  0x05
 
 // motor compensation types (for use with motor_comp_enabled)
 #define AP_COMPASS_MOT_COMP_DISABLED    0x00
