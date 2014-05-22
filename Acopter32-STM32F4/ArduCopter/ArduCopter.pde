@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduCopter V3.2-01"
+#define THISFIRMWARE "ArduCopter V3.2-rc1"
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -228,7 +228,7 @@ static DataFlash_Empty DataFlash;
 // the rate we run the main loop at
 ////////////////////////////////////////////////////////////////////////////////
 #if MAIN_LOOP_RATE == 400
-static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_1000HZ;
+static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_400HZ;
 #else
 static const AP_InertialSensor::Sample_rate ins_sample_rate = AP_InertialSensor::RATE_100HZ;
 #endif
@@ -288,6 +288,8 @@ static SITL sitl;
 static AP_Baro_BMP085 barometer;
   #elif CONFIG_BARO == AP_BARO_PX4
 static AP_Baro_PX4 barometer;
+#elif CONFIG_BARO == AP_BARO_VRBRAIN
+static AP_Baro_VRBRAIN barometer;
   #elif CONFIG_BARO == AP_BARO_MS5611
    #if CONFIG_MS5611_SERIAL == AP_BARO_MS5611_SPI
 static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::spi);
@@ -298,14 +300,14 @@ static AP_Baro_MS5611 barometer(&AP_Baro_MS5611::i2c);
    #endif
   #endif
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+ #if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+static AP_Compass_PX4 compass;
+#elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
  #ifdef COMPASS_EXT
   static AP_Compass_HMC5843_EXT compass;
  #else
   static AP_Compass_HMC5843 compass;
  #endif
-#elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
-static AP_Compass_PX4 compass;
  #else
 static AP_Compass_HMC5843 compass;
  #endif
