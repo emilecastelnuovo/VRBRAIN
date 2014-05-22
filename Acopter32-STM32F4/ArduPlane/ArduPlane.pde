@@ -235,6 +235,8 @@ AP_ADC_ADS7844 apm1_adc;
 AP_InertialSensor_MPU6000 ins;
 #elif CONFIG_INS_TYPE == CONFIG_INS_PX4
 AP_InertialSensor_PX4 ins;
+#elif CONFIG_INS_TYPE == CONFIG_INS_VRBRAIN
+AP_InertialSensor_VRBRAIN ins;
 #elif CONFIG_INS_TYPE == CONFIG_INS_HIL
 AP_InertialSensor_HIL ins;
 #elif CONFIG_INS_TYPE == CONFIG_INS_OILPAN
