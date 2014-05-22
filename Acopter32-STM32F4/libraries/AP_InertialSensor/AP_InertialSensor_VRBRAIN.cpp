@@ -2,6 +2,7 @@
 
 #include <AP_HAL.h>
 #include "AP_InertialSensor_VRBRAIN.h"
+#include <LowPassFilter2p.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -154,25 +155,10 @@ extern const AP_HAL::HAL& hal;
 #define MPU6000_REV_D9                          0x59    // 0101			1001
 
 
-Vector3f AP_InertialSensor_VRBRAIN::_accel_filtered;
-uint32_t AP_InertialSensor_VRBRAIN::_accel_samples;
-Vector3f AP_InertialSensor_VRBRAIN::_gyro_filtered;
-uint32_t AP_InertialSensor_VRBRAIN::_gyro_samples;
-uint64_t AP_InertialSensor_VRBRAIN::_last_accel_timestamp;
-uint64_t AP_InertialSensor_VRBRAIN::_last_gyro_timestamp;
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_accel_filter_x(1000, 30);
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_accel_filter_y(1000, 30);
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_accel_filter_z(1000, 30);
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_gyro_filter_x(1000, 30);
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_gyro_filter_y(1000, 30);
-LowPassFilter2p AP_InertialSensor_VRBRAIN::_gyro_filter_z(1000, 30);
-
-
 // This is how often we wish to make raw samples of the sensors in Hz
 const uint32_t  raw_sample_rate_hz = 1000;
 // And the equivalent time between samples in microseconds
 const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
-
 /*
  *  RM-MPU-6000A-00.pdf, page 33, section 4.25 lists LSB sensitivity of
  *  gyro as 16.4 LSB/DPS at scale factor of +/- 2000dps (FS_SEL==3)
@@ -192,7 +178,16 @@ AP_InertialSensor_VRBRAIN::AP_InertialSensor_VRBRAIN() :
 	AP_InertialSensor(),
     _drdy_pin(NULL),
     _initialised(false),
-    _mpu6000_product_id(AP_PRODUCT_ID_NONE)
+    _mpu6000_product_id(AP_PRODUCT_ID_NONE),
+    _last_sample_timestamp(0),
+    _have_sample_available(false),
+    _accel_filter_x(1000, 30),
+    _accel_filter_y(1000, 30),
+    _accel_filter_z(1000, 30),
+    _gyro_filter_x(1000, 30),
+    _gyro_filter_y(1000, 30),
+    _gyro_filter_z(1000, 30),
+    _temp_filter(1000,10)
 {
 }
 
@@ -315,6 +310,8 @@ bool AP_InertialSensor_VRBRAIN::update( void )
             _last_filter_hz = _mpu6000_filter;
     }
 
+    _have_sample_available = false;
+
     return true;
 }
 
@@ -365,7 +362,7 @@ void AP_InertialSensor_VRBRAIN::_poll_data(void)
             _spi_sem->give();
         } else {
             hal.scheduler->panic(
-                PSTR("PANIC: AP_InertialSensor_MPU6000::_poll_data "
+                PSTR("PANIC: AP_InertialSensor_VRBRAIN::_poll_data "
                      "failed to take SPI semaphore synchronously"));
         }
     }
@@ -400,7 +397,6 @@ void AP_InertialSensor_VRBRAIN::_read_data_transaction() {
 
 #define int16_val(v, idx) ((int16_t)(((uint16_t)v[2*idx] << 8) | v[2*idx+1]))
 
-    uint64_t now = hal.scheduler->micros();
     int16_t x = -(int16_val(rx.v, 1));
     int16_t y = -(int16_val(rx.v, 0));
     int16_t z = -(int16_val(rx.v, 2));
@@ -408,9 +404,7 @@ void AP_InertialSensor_VRBRAIN::_read_data_transaction() {
 				_accel_filter_y.apply(y),
 				_accel_filter_z.apply(z));
     _accel_samples++;
-    _last_accel_timestamp = now;
 
-    now = hal.scheduler->micros();
     x = -(int16_val(rx.v, 5));
     y = -(int16_val(rx.v, 4));
     z = -(int16_val(rx.v, 6));
@@ -418,7 +412,6 @@ void AP_InertialSensor_VRBRAIN::_read_data_transaction() {
 				_gyro_filter_y.apply(y),
 				_gyro_filter_z.apply(z));
     _gyro_samples++;
-    _last_gyro_timestamp = now;
 
     _temp_filtered = _temp_filter.apply(int16_val(rx.v, 3));
 
@@ -513,39 +506,21 @@ bool AP_InertialSensor_VRBRAIN::_hardware_init(Sample_rate sample_rate)
     // that is less than half of the sample rate
     switch (sample_rate) {
     case RATE_50HZ:
-        // this is used for plane and rover, where noise resistance is
-        // more important than update rate. Tests on an aerobatic plane
-        // show that 10Hz is fine, and makes it very noise resistant
-	_sample_rate = MPUREG_SMPLRT_200HZ;
-	_sample_time_usec = 50000;
-        _default_filter = 10;
-        _sample_shift = 2;
-
+	_sample_time_usec = 20000;
+        _default_filter = 15;
         break;
     case RATE_100HZ:
-	_sample_rate = MPUREG_SMPLRT_200HZ;
 	_sample_time_usec = 10000;
-        _default_filter = 20;
-        _sample_shift = 1;
-        break;
-    case RATE_400HZ:
-	_sample_rate = MPUREG_SMPLRT_1000HZ;
-	_sample_time_usec = 2500;
-        _default_filter = 20;
-        _sample_shift = 0;
-        break;
-    case RATE_1000HZ:
-	_sample_rate = MPUREG_SMPLRT_1000HZ;
-	_sample_time_usec = 1000;
-        _default_filter = 20;
-        _sample_shift = 0;
+        _default_filter = 30;
         break;
     case RATE_200HZ:
-    default:
-	_sample_rate = MPUREG_SMPLRT_200HZ;
 	_sample_time_usec = 5000;
-        _default_filter = 20;
-        _sample_shift = 0;
+        _default_filter = 30;
+        break;
+    case RATE_400HZ:
+    default:
+	_sample_time_usec = 2500;
+        _default_filter = 30;
         break;
     }
 
@@ -555,7 +530,7 @@ bool AP_InertialSensor_VRBRAIN::_hardware_init(Sample_rate sample_rate)
 
     // set sample rate to 200Hz, and use _sample_divider to give
     // the requested rate to the application
-    _register_write(MPUREG_SMPLRT_DIV, _sample_rate);
+    _register_write(MPUREG_SMPLRT_DIV, MPUREG_SMPLRT_1000HZ);
 
     hal.scheduler->delay(1);
 
@@ -597,7 +572,7 @@ bool AP_InertialSensor_VRBRAIN::_hardware_init(Sample_rate sample_rate)
 
 float AP_InertialSensor_VRBRAIN::_temp_to_celsius ( int32_t regval )
 {
-    float temp = ((float)regval/340.0) + 36.53f;
+    float temp = ((float)regval/340.0f) + 36.53f;
     return temp;
 }
 
@@ -606,15 +581,18 @@ float AP_InertialSensor_VRBRAIN::_temp_to_celsius ( int32_t regval )
 float AP_InertialSensor_VRBRAIN::get_gyro_drift_rate(void)
 {
     // 0.5 degrees/second/minute
-    return ToRad(0.5/60);
+    return ToRad(0.5f/60.0f);
 }
 
 // return true if a sample is available
 bool AP_InertialSensor_VRBRAIN::_sample_available()
 {
-    _poll_data();
-    return (min(_accel_samples, _gyro_samples) >> _sample_shift) > 0;
-
+    uint64_t tnow = hal.scheduler->micros();
+    while (tnow - _last_sample_timestamp > _sample_time_usec) {
+        _have_sample_available = true;
+        _last_sample_timestamp += _sample_time_usec;
+    }
+    return _have_sample_available;
 }
 
 
@@ -639,5 +617,6 @@ void AP_InertialSensor_VRBRAIN::_dump_registers(void)
 float AP_InertialSensor_VRBRAIN::get_delta_time() const
 {
     // the sensor runs at 200Hz
-    return _sample_time_usec * 1.0e-6f * _num_samples;
+    return _sample_time_usec * 1.0e-6f;
 }
+

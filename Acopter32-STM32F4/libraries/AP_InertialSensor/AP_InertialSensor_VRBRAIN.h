@@ -87,21 +87,21 @@ private:
 
     uint8_t _default_filter;
 
-    static Vector3f _accel_filtered;
-    static uint32_t _accel_samples;
-    static Vector3f _gyro_filtered;
-    static uint32_t _gyro_samples;
-    static float _temp_filtered;
-    static uint64_t _last_accel_timestamp;
-    static uint64_t _last_gyro_timestamp;
+    Vector3f _accel_filtered;
+    uint32_t _accel_samples;
+    Vector3f _gyro_filtered;
+    uint32_t _gyro_samples;
+    float _temp_filtered;
+    uint64_t _last_sample_timestamp;
+    bool _have_sample_available;
 
-    static LowPassFilter2p _accel_filter_x;
-    static LowPassFilter2p _accel_filter_y;
-    static LowPassFilter2p _accel_filter_z;
-    static LowPassFilter2p _gyro_filter_x;
-    static LowPassFilter2p _gyro_filter_y;
-    static LowPassFilter2p _gyro_filter_z;
-    static LowPassFilter2p _temp_filter;
+    LowPassFilter2p _accel_filter_x;
+    LowPassFilter2p _accel_filter_y;
+    LowPassFilter2p _accel_filter_z;
+    LowPassFilter2p _gyro_filter_x;
+    LowPassFilter2p _gyro_filter_y;
+    LowPassFilter2p _gyro_filter_z;
+    LowPassFilter2p _temp_filter;
 public:
 
 #if MPU6000_DEBUG
@@ -109,4 +109,4 @@ public:
 #endif
 };
 
-#endif // __AP_INERTIAL_SENSOR_MPU6000_H__
+#endif // __AP_INERTIAL_SENSOR_VRBRAIN_H__
