@@ -442,6 +442,7 @@ bool AP_Mission::mavlink_to_mission_cmd(const mavlink_mission_item_t& packet, AP
 {
     bool copy_location = false;
     bool copy_alt = false;
+    uint8_t num_turns, radius_m;    // used by MAV_CMD_NAV_LOITER_TURNS
 
     // command's position in mission list and mavlink id
     cmd.index = packet.seq;
@@ -462,7 +463,9 @@ bool AP_Mission::mavlink_to_mission_cmd(const mavlink_mission_item_t& packet, AP
 
     case MAV_CMD_NAV_LOITER_TURNS:                      // MAV ID: 18
         copy_location = true;
-        cmd.p1 = packet.param1;                         // number of times to circle is held in location.p1
+        num_turns = packet.param1;                      // number of times to circle is held in param1
+        radius_m = fabs(packet.param3);                 // radius in meters is held in high in param3
+        cmd.p1 = (((uint16_t)radius_m)<<8) | (uint16_t)num_turns;   // store radius in high byte of p1, num turns in low byte of p1
         cmd.content.location.flags.loiter_ccw = (packet.param3 < 0);
         break;
 
@@ -576,6 +579,10 @@ bool AP_Mission::mavlink_to_mission_cmd(const mavlink_mission_item_t& packet, AP
         cmd.p1 = packet.param1;                        // action 0=disable, 1=enable, 2=release.  See PARACHUTE_ACTION enum
         break;
 
+    case MAV_CMD_DO_INVERTED_FLIGHT:                    // MAV ID: 210
+        cmd.p1 = packet.param1;                         // normal=0 inverted=1
+        break;
+
     default:
         // unrecognised command
         return false;
@@ -677,11 +684,10 @@ bool AP_Mission::mission_cmd_to_mavlink(const AP_Mission::Mission_Command& cmd, 
 
     case MAV_CMD_NAV_LOITER_TURNS:                      // MAV ID: 18
         copy_location = true;
-        packet.param1 = cmd.p1;                         // number of times to circle is held in location.p1
+        packet.param1 = LOWBYTE(cmd.p1);                // number of times to circle is held in low byte of p1
+        packet.param3 = HIGHBYTE(cmd.p1);               // radius is held in high byte of p1
         if (cmd.content.location.flags.loiter_ccw) {
-            packet.param3 = -1;
-        }else{
-            packet.param3 = 1;
+            packet.param3 = -packet.param3;
         }
         break;
 
@@ -797,6 +803,10 @@ bool AP_Mission::mission_cmd_to_mavlink(const AP_Mission::Mission_Command& cmd, 
 
     case MAV_CMD_DO_PARACHUTE:                          // MAV ID: 208
         packet.param1 = cmd.p1;                         // action 0=disable, 1=enable, 2=release.  See PARACHUTE_ACTION enum
+        break;
+
+    case MAV_CMD_DO_INVERTED_FLIGHT:                    // MAV ID: 210
+        packet.param1 = cmd.p1;                         // normal=0 inverted=1
         break;
 
     default:
