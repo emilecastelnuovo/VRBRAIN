@@ -82,12 +82,16 @@ static const struct sbus_bit_pick sbus_decoder[SBUS_INPUT_CHANNELS][3] = {
 void SBUSClass::begin() {
 
 	for (byte i = 0; i<18; i++) {
-		_channels[i]      = 0;
+		_channels[i]      = 1500;
 	}
 	_failsafe = 0;
 	_last_update = hal.scheduler->micros();
+	_last_frame = hal.scheduler->micros();
 
 	_serial->begin(100000,1);
+
+	_partial_frame_count = 0;
+
 
 	hal.scheduler->register_timer_process(AP_HAL_MEMBERPROC(&SBUSClass::_process));
 }
@@ -96,16 +100,45 @@ void SBUSClass::begin() {
 
 void SBUSClass::_process() {
 
-	uint32_t now = hal.scheduler->micros();
+    uint32_t now = hal.scheduler->micros();
+    uint8_t bytes = 0;
 
-	if((now-_last_update) > 3000 && _serial->available() >= 25) {
-
-	    for (uint8_t i = 0; i < SBUS_FRAME_SIZE; i++) {
-		    frame[i] = _serial->read();
+    if ((now - _last_update) > 3000)
+	{
+	if (_partial_frame_count > 0)
+	    {
+	    _decoderErrorFrames++;
+	    _partial_frame_count = 0;
 	    }
+	}
+
+    for (uint8_t i = 0; i < SBUS_FRAME_SIZE - _partial_frame_count; i++) {
+	if (_serial->available())
+	    {
+	    frame[_partial_frame_count] = _serial->read();
+	    _partial_frame_count++;
+	    bytes++;
+	    }
+	else {
+	    continue;
+	}
+    }
+
+    if (bytes < 1)
+	return;
+
+    _last_update = now;
+
+    if (_partial_frame_count < SBUS_FRAME_SIZE)
+	return;
+
+    _partial_frame_count = 0;
+
+
 	    if (frame[0] != SBUS_STARTBYTE) {
 		//incorrect start byte, out of sync
 		_decoderErrorFrames++;
+		_serial->flush();
 		return;
 	    }
 	    switch (frame[24]){
@@ -130,6 +163,8 @@ void SBUSClass::_process() {
 		    break;
 		    //incorrect end byte, out of sync
 	    }
+
+	    _last_frame = now;
 
 	    for (uint8_t channel = 0; channel < SBUS_INPUT_CHANNELS; channel++) {
 		    uint16_t value = 0;
@@ -166,18 +201,16 @@ void SBUSClass::_process() {
 		 _failsafe = SBUS_FAILSAFE_INACTIVE;
 	    }
 
-	    _last_update = hal.scheduler->micros();
-	}
 
 }
 
 uint16_t SBUSClass::getChannel(uint8_t channel) {
-	if (channel < 0 or channel > 17) {
+	if (channel < 0 || channel > 17) {
 		return 0;
 	} else {
-	    if(hal.scheduler->micros() - _last_update > 500000) {
+	    /*if(hal.scheduler->micros() - _last_frame > 500000) {
 		_failsafe = SBUS_FAILSAFE_ACTIVE;
-	    }
+	    }*/
 	    if (channel == 2 && _failsafe) { //hardcoded failsafe action if RX is in failsafe, put throttle to 900
 		return 900;
 	    } else {
@@ -190,11 +223,4 @@ uint16_t SBUSClass::getFailsafeStatus() {
 	return _failsafe;
 }
 
-uint64_t SBUSClass::getLostFrames() {
-	return _lostFrames;
-}
-
-uint64_t SBUSClass::getDecoderErrorFrames() {
-	return _decoderErrorFrames;
-}
 

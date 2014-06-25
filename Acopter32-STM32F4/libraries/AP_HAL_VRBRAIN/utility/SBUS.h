@@ -75,8 +75,8 @@ class SBUSClass {
 		void begin();
 		uint16_t getChannel(uint8_t channel);
 		uint16_t getFailsafeStatus();
-		uint64_t getLostFrames();
-		uint64_t getDecoderErrorFrames();
+		uint16_t getLastUpdate() { return _last_frame;} ;
+
 	private:
 		void _process();
 		AP_HAL::UARTDriver * _serial;
@@ -86,6 +86,8 @@ class SBUSClass {
 		uint64_t _decoderErrorFrames;
 		uint32_t _last_update;
 		uint8_t	frame[SBUS_FRAME_SIZE];
+		uint8_t _partial_frame_count;
+		uint32_t _last_frame;
 };
 
 
