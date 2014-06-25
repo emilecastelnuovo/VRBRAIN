@@ -98,6 +98,7 @@ void VRBRAINRCOutput::init(void* implspecific)
 	    //enable timer on pmn in ch1-4
 	   timerDefaultConfig(TIMER1);
 	}
+	if(g_is_ppmsum > 0) {
 	    /*enable 4 outputs if PPMSUM is detected*/
 	    outPin[MOTORID7] = out_ch9;
 	    outPin[MOTORID8] = out_ch10;
@@ -105,6 +106,7 @@ void VRBRAINRCOutput::init(void* implspecific)
 	    outPin[MOTORID10] = out_ch12;
 
 	    _num_motors = 10;
+	}
 
     } else { //no external mag detected so we use ch7 and ch8 as normal outputs
 
