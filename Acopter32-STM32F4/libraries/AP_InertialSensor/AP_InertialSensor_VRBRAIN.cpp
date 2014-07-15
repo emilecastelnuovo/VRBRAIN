@@ -163,7 +163,8 @@ const uint32_t  raw_sample_interval_us = (1000000 / raw_sample_rate_hz);
  *  RM-MPU-6000A-00.pdf, page 33, section 4.25 lists LSB sensitivity of
  *  gyro as 16.4 LSB/DPS at scale factor of +/- 2000dps (FS_SEL==3)
  */
-const float AP_InertialSensor_VRBRAIN::_gyro_scale = (0.0174532f / 32.8f);
+//const float AP_InertialSensor_VRBRAIN::_gyro_scale = (0.0174532f / 32.8f);
+const float AP_InertialSensor_VRBRAIN::_gyro_scale = (0.0174532f / 16.4f);
 
 
 /*
@@ -203,6 +204,7 @@ uint16_t AP_InertialSensor_VRBRAIN::_init_sensor( Sample_rate sample_rate )
        up PE6 to the hal.gpio abstraction.
        (It is not a valid pin under Arduino.) */
     _drdy_pin = hal.gpio->channel(99);
+    _drdy_pin->mode(HAL_GPIO_INPUT);
 
     hal.scheduler->suspend_timer_procs();
 
@@ -528,13 +530,13 @@ bool AP_InertialSensor_VRBRAIN::_hardware_init(Sample_rate sample_rate)
 
     _set_filter_frequency(_mpu6000_filter);
 
-    // set sample rate to 200Hz, and use _sample_divider to give
+    // set sample rate to 1000Hz, and use _sample_divider to give
     // the requested rate to the application
     _register_write(MPUREG_SMPLRT_DIV, MPUREG_SMPLRT_1000HZ);
 
     hal.scheduler->delay(1);
 
-    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_1000DPS);  // Gyro scale 2000º/s
+    _register_write(MPUREG_GYRO_CONFIG, BITS_GYRO_FS_2000DPS);  // Gyro scale 2000º/s
 
     hal.scheduler->delay(1);
 

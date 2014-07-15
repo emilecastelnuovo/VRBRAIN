@@ -53,7 +53,7 @@ const AP_Param::GroupInfo AC_AttitudeControl_Heli::var_info[] PROGMEM = {
     // @User: Advanced
     AP_GROUPINFO("ACCEL_Y_MAX",  4, AC_AttitudeControl_Heli, _accel_y_max, AC_ATTITUDE_CONTROL_ACCEL_Y_MAX_DEFAULT),
 
-    // @Param: ATC_RATE_FF_ENAB
+    // @Param: RATE_FF_ENAB
     // @DisplayName: Rate Feedforward Enable
     // @Description: Controls whether body-frame rate feedfoward is enabled or disabled
     // @Values: 0:Disabled, 1:Enabled
@@ -73,7 +73,6 @@ void AC_AttitudeControl_Heli::rate_controller_run()
 {	
     // call rate controllers and send output to motors object
     // To-Do: should the outputs from get_rate_roll, pitch, yaw be int16_t which is the input to the motors library?
-    // To-Do: skip this step if the throttle out is zero?
     rate_bf_to_motor_roll_pitch(_rate_bf_target.x, _rate_bf_target.y);
     _motors.set_yaw(rate_bf_to_motor_yaw(_rate_bf_target.z));
 }
@@ -139,8 +138,8 @@ void AC_AttitudeControl_Heli::rate_bf_to_motor_roll_pitch(float rate_roll_target
         }
     }
     
-    roll_ff  = ((AC_HELI_PID&)_pid_rate_roll).get_ff(rate_roll_target_cds);
-    pitch_ff = ((AC_HELI_PID&)_pid_rate_pitch).get_ff(rate_pitch_target_cds);
+    roll_ff = roll_feedforward_filter.apply(((AC_HELI_PID&)_pid_rate_roll).get_ff(rate_roll_target_cds));
+    pitch_ff = pitch_feedforward_filter.apply(((AC_HELI_PID&)_pid_rate_pitch).get_ff(rate_pitch_target_cds));
 
     // add feed forward and final output
     roll_out = roll_pd + roll_i + roll_ff;
@@ -271,8 +270,8 @@ float AC_AttitudeControl_Heli::rate_bf_to_motor_yaw(float rate_target_cds)
             i = ((AC_HELI_PID&)_pid_rate_yaw).get_leaky_i(rate_error, _dt, AC_ATTITUDE_HELI_RATE_INTEGRATOR_LEAK_RATE);    // If motor is not running use leaky I-term to avoid excessive build-up
         }
     }
-
-    ff  = ((AC_HELI_PID&)_pid_rate_yaw).get_ff(rate_target_cds);
+    
+    ff = yaw_feedforward_filter.apply(((AC_HELI_PID&)_pid_rate_yaw).get_ff(rate_target_cds));
     
     // add feed forward
     yaw_out = pd + i + ff;
@@ -301,3 +300,12 @@ int16_t AC_AttitudeControl_Heli::get_angle_boost(int16_t throttle_pwm)
     _angle_boost = 0;
     return throttle_pwm;
 }
+
+// update_feedforward_filter_rate - Sets LPF cutoff frequency
+void AC_AttitudeControl_Heli::update_feedforward_filter_rates(float time_step)
+{
+    pitch_feedforward_filter.set_cutoff_frequency(time_step, AC_ATTITUDE_HELI_RATE_FF_FILTER);
+    roll_feedforward_filter.set_cutoff_frequency(time_step, AC_ATTITUDE_HELI_RATE_FF_FILTER);
+    yaw_feedforward_filter.set_cutoff_frequency(time_step, AC_ATTITUDE_HELI_RATE_FF_FILTER);
+}
+
