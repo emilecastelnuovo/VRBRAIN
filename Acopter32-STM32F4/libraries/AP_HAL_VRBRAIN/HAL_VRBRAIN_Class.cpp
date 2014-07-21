@@ -81,7 +81,11 @@ static void detect_compass(void){
     if(compass.init()){
 	hal.console->printf_P(PSTR("Internal Compass found!"));
 	g_ext_mag_detect = 0;
+	return;
 	}
+
+    //No compass found
+    g_ext_mag_detect = 3;
 }
 
 void HAL_VRBRAIN::init(int argc,char* const argv[]) const

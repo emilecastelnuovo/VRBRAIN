@@ -32,7 +32,7 @@ void VRBRAINRCOutput::init(void* implspecific)
     out_ch5=46;  //Timer3 ch3
     out_ch6=45;  //Timer3 ch4
 
-    if(g_ext_mag_detect){
+    if(g_ext_mag_detect == 1){
 	    if(g_is_ppmsum == 3) { //if we have SBUS enabled use INPUT1-4 as outputs
 		out_ch7=75;  //Timer1 ch1 PWM_IN_1
 		out_ch8=80; //Timer1 ch2 PWM_IN_2
@@ -88,7 +88,7 @@ void VRBRAINRCOutput::init(void* implspecific)
     timerDefaultConfig(TIMER3);
 
     /*If external mag is detected then switch off TIMER4 to enable I2C on those channels */
-    if (g_ext_mag_detect){
+    if (g_ext_mag_detect == 1){
 	timer_disable(TIMER4);
 
 	if(g_is_ppmsum == 1){
@@ -151,7 +151,7 @@ void VRBRAINRCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
     if ((chmask & ( _BV(CH_4) | _BV(CH_5) | _BV(CH_6))) != 0) {
 	TIM3->ARR = icr;
     }
-    if(g_ext_mag_detect) {
+    if(g_ext_mag_detect == 1) {
 	if(g_is_ppmsum == 1) {
 	    if ((chmask & ( _BV(CH_7) | _BV(CH_8) | _BV(CH_9) | _BV(CH_10))) != 0) {
 		TIM8->ARR = icr;
@@ -162,7 +162,7 @@ void VRBRAINRCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
 		TIM1->ARR = icr;
 	    }
 	}
-    } else {
+    } else if(g_ext_mag_detect == 0) {
 	if ((chmask & ( _BV(CH_7) | _BV(CH_8))) != 0) {
 	    TIM4->ARR = icr;
 	}
@@ -230,9 +230,9 @@ void VRBRAINRCOutput::enable_ch(uint8_t ch)
 	case 6:
 	    if(_num_motors > 6) {
 	   		dev = PIN_MAP[out_ch7].timer_device;
-	   		if(g_ext_mag_detect){
+	   		if(g_ext_mag_detect == 1){
 	   		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC1E;
-	   		} else {
+	   		} else if(g_ext_mag_detect == 0){
 	   		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC3E;
 	   		}
 	   	    }
@@ -240,9 +240,9 @@ void VRBRAINRCOutput::enable_ch(uint8_t ch)
 	case 7:
 	    if(_num_motors > 6) {
 		dev = PIN_MAP[out_ch8].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC2E;
-		} else {
+		} else if(g_ext_mag_detect == 0) {
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC4E;
 		}
 	    }
@@ -250,9 +250,9 @@ void VRBRAINRCOutput::enable_ch(uint8_t ch)
 	case 8:
 	    if(_num_motors > 8) {
 		dev = PIN_MAP[out_ch9].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC3E;
-		} else {
+		} else if(g_ext_mag_detect == 0){
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC1E;
 		}
 
@@ -261,9 +261,9 @@ void VRBRAINRCOutput::enable_ch(uint8_t ch)
 	case 9:
 	    if(_num_motors > 8) {
 		dev = PIN_MAP[out_ch10].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC4E;
-		} else {
+		} else if(g_ext_mag_detect == 0){
 		    (dev->regs)->CCER |= (uint16_t)TIM_CCER_CC2E;
 		}
 
@@ -298,9 +298,9 @@ void VRBRAINRCOutput::disable_ch(uint8_t ch)
 	case 6:
 	    if(_num_motors > 6) {
 		dev = PIN_MAP[out_ch7].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC1E;
-		} else {
+		} else if(g_ext_mag_detect == 0){
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC3E;
 		}
 	    }
@@ -308,9 +308,9 @@ void VRBRAINRCOutput::disable_ch(uint8_t ch)
 	case 7:
 	    if(_num_motors > 6) {
 		dev = PIN_MAP[out_ch8].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC2E;
-		} else {
+		} else if(g_ext_mag_detect == 0) {
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC4E;
 		}
 	    }
@@ -318,9 +318,9 @@ void VRBRAINRCOutput::disable_ch(uint8_t ch)
 	case 8:
 	    if(_num_motors > 8) {
 		dev = PIN_MAP[out_ch9].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC3E;
-		} else {
+		} else if(g_ext_mag_detect == 0) {
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC1E;
 		}
 
@@ -329,9 +329,9 @@ void VRBRAINRCOutput::disable_ch(uint8_t ch)
 	case 9:
 	    if(_num_motors > 8) {
 		dev = PIN_MAP[out_ch10].timer_device;
-		if(g_ext_mag_detect){
+		if(g_ext_mag_detect == 1){
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC4E;
-		} else {
+		} else if(g_ext_mag_detect == 0) {
 		    (dev->regs)->CCER &= (uint16_t)~TIM_CCER_CC2E;
 		}
 
