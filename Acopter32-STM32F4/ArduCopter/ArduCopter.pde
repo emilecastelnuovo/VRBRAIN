@@ -1093,22 +1093,19 @@ static void ten_hz_logging_loop()
 	counter++;
 	break;
     case 1:
-	if (g.log_bitmask & MASK_LOG_ATTITUDE_MED) {
-	    Log_Write_Attitude();
-	}
-	counter++;
-	break;
-    case 2:
 	if (g.log_bitmask & MASK_LOG_RCIN) {
 	    DataFlash.Log_Write_RCIN();
 	}
 	counter++;
 	break;
-
-    case 3:
+    case 2:
 	if (g.log_bitmask & MASK_LOG_RCOUT) {
 	    DataFlash.Log_Write_RCOUT();
 	}
+	counter++;
+	break;
+
+    case 3:
 	if ((g.log_bitmask & MASK_LOG_NTUN) && mode_requires_GPS(control_mode)) {
 	    Log_Write_Nav_Tuning();
 	}
