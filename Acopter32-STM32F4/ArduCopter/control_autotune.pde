@@ -216,6 +216,7 @@ static void autotune_run()
         attitude_control.relax_bf_rate_controller();
         attitude_control.set_yaw_target_to_current_heading();
         attitude_control.set_throttle_out(0, false);
+        pos_control.set_alt_target_to_current_alt();
         return;
     }
 
@@ -245,6 +246,7 @@ static void autotune_run()
         attitude_control.set_yaw_target_to_current_heading();
         // move throttle to between minimum and non-takeoff-throttle to keep us on the ground
         attitude_control.set_throttle_out(get_throttle_pre_takeoff(g.rc_3.control_in), false);
+        pos_control.set_alt_target_to_current_alt();
     }else{
         // check if pilot is overriding the controls
         if (target_roll != 0 || target_pitch != 0 || target_yaw_rate != 0.0f || target_climb_rate != 0) {
@@ -393,7 +395,7 @@ static void autotune_attitude_control()
             }
 
             // capture min rotation rate after the rotation rate has peaked (aka "bounce back rate")
-            if (rotation_rate < autotune_test_min && autotune_test_max > AUTOTUNE_TARGET_RATE_CDS*(1-2*AUTOTUNE_AGGRESSIVENESS)) {
+            if (rotation_rate < autotune_test_min && autotune_test_max > AUTOTUNE_TARGET_RATE_CDS*0.5) {
                 autotune_test_min = rotation_rate;
             }
         }
@@ -444,14 +446,20 @@ static void autotune_attitude_control()
                 // if max rotation rate was higher than target, reduce rate P
                 if (autotune_state.axis == AUTOTUNE_AXIS_ROLL) {
                     tune_roll_rp -= AUTOTUNE_RP_STEP;
+                    // abandon tuning if rate P falls below 0.01
+                    if(tune_roll_rp < AUTOTUNE_RP_MIN) {
+                        tune_roll_rp = AUTOTUNE_RP_MIN;
+                        autotune_counter = AUTOTUNE_SUCCESS_COUNT;
+                        Log_Write_Event(DATA_AUTOTUNE_REACHED_LIMIT);
+                    }
                 }else{
                     tune_pitch_rp -= AUTOTUNE_RP_STEP;
-                }
-                // abandon tuning if rate P falls below 0.01
-                if(((autotune_state.axis == AUTOTUNE_AXIS_ROLL && tune_roll_rp < AUTOTUNE_RP_MIN) ||
-                    (autotune_state.axis == AUTOTUNE_AXIS_PITCH && tune_pitch_rp < AUTOTUNE_RP_MIN)) ) {
-                    autotune_failed();
-                    return;
+                    // abandon tuning if rate P falls below 0.01
+                    if( tune_pitch_rp < AUTOTUNE_RP_MIN ) {
+                        tune_pitch_rp = AUTOTUNE_RP_MIN;
+                        autotune_counter = AUTOTUNE_SUCCESS_COUNT;
+                        Log_Write_Event(DATA_AUTOTUNE_REACHED_LIMIT);
+                    }
                 }
             // if maximum rotation rate was less than 80% of requested rate increase rate P
             }else if(autotune_test_max < AUTOTUNE_TARGET_RATE_CDS*(1.0f-AUTOTUNE_AGGRESSIVENESS*2.0f) &&
@@ -497,14 +505,30 @@ static void autotune_attitude_control()
                 // if max rotation rate was higher than target, reduce rate P
                 if (autotune_state.axis == AUTOTUNE_AXIS_ROLL) {
                     tune_roll_rp -= AUTOTUNE_RP_STEP;
+                    // reduce rate D if tuning if rate P falls below 0.01
+                    if(tune_roll_rp < AUTOTUNE_RP_MIN) {
+                        tune_roll_rp = AUTOTUNE_RP_MIN;
+                        tune_roll_rd -= AUTOTUNE_RD_STEP;
+                        // stop tuning if we hit min D
+                        if (tune_roll_rd <= AUTOTUNE_RD_MIN) {
+                            tune_roll_rd = AUTOTUNE_RD_MIN;
+                            autotune_counter = AUTOTUNE_SUCCESS_COUNT;
+                            Log_Write_Event(DATA_AUTOTUNE_REACHED_LIMIT);
+                        }
+                    }
                 }else{
                     tune_pitch_rp -= AUTOTUNE_RP_STEP;
-                }
-                // abandon tuning if rate P falls below 0.01
-                if(((autotune_state.axis == AUTOTUNE_AXIS_ROLL && tune_roll_rp < AUTOTUNE_RP_MIN) ||
-                    (autotune_state.axis == AUTOTUNE_AXIS_PITCH && tune_pitch_rp < AUTOTUNE_RP_MIN)) ) {
-                    autotune_failed();
-                    return;
+                    // reduce rate D if tuning if rate P falls below 0.01
+                    if( tune_pitch_rp < AUTOTUNE_RP_MIN ) {
+                        tune_pitch_rp = AUTOTUNE_RP_MIN;
+                        tune_pitch_rd -= AUTOTUNE_RD_STEP;
+                        // stop tuning if we hit min D
+                        if (tune_pitch_rd <= AUTOTUNE_RD_MIN) {
+                            tune_pitch_rd = AUTOTUNE_RD_MIN;
+                            autotune_counter = AUTOTUNE_SUCCESS_COUNT;
+                            Log_Write_Event(DATA_AUTOTUNE_REACHED_LIMIT);
+                        }
+                    }
                 }
             // if maximum rotation rate was less than 80% of requested rate increase rate P
             }else if(autotune_test_max < AUTOTUNE_TARGET_RATE_CDS*(1-AUTOTUNE_AGGRESSIVENESS*2.0f) &&

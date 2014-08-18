@@ -19,10 +19,9 @@ static int8_t   test_airspeed(uint8_t argc,     const Menu::arg *argv);
 static int8_t   test_pressure(uint8_t argc,     const Menu::arg *argv);
 static int8_t   test_mag(uint8_t argc,                  const Menu::arg *argv);
 static int8_t   test_xbee(uint8_t argc,                 const Menu::arg *argv);
-static int8_t   test_eedump(uint8_t argc,               const Menu::arg *argv);
 static int8_t   test_modeswitch(uint8_t argc,           const Menu::arg *argv);
 static int8_t   test_logging(uint8_t argc,              const Menu::arg *argv);
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 static int8_t   test_shell(uint8_t argc,              const Menu::arg *argv);
 #endif
 
@@ -41,7 +40,6 @@ static const struct Menu::command test_menu_commands[] PROGMEM = {
     {"relay",                       test_relay},
     {"waypoints",           test_wp},
     {"xbee",                        test_xbee},
-    {"eedump",                      test_eedump},
     {"modeswitch",          test_modeswitch},
 
     // Tests below here are for hardware sensors only present
@@ -61,7 +59,7 @@ static const struct Menu::command test_menu_commands[] PROGMEM = {
     {"compass",             test_mag},
 #endif
     {"logging",             test_logging},
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
     {"shell", 				test_shell},
 #endif
 
@@ -81,21 +79,6 @@ test_mode(uint8_t argc, const Menu::arg *argv)
 static void print_hit_enter()
 {
     cliSerial->printf_P(PSTR("Hit Enter to exit.\n\n"));
-}
-
-static int8_t
-test_eedump(uint8_t argc, const Menu::arg *argv)
-{
-    uint16_t i, j;
-
-    // hexdump the EEPROM
-    for (i = 0; i < HAL_STORAGE_SIZE_AVAILABLE; i += 16) {
-        cliSerial->printf_P(PSTR("%04x:"), i);
-        for (j = 0; j < 16; j++)
-            cliSerial->printf_P(PSTR(" %02x"), hal.storage->read_byte(i + j));
-        cliSerial->println();
-    }
-    return(0);
 }
 
 static int8_t
@@ -362,7 +345,7 @@ test_logging(uint8_t argc, const Menu::arg *argv)
     return 0;
 }
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
 /*
  *  run a debug shell
  */
@@ -595,7 +578,7 @@ test_pressure(uint8_t argc, const Menu::arg *argv)
     while(1) {
         delay(100);
 
-        if (!barometer.healthy) {
+        if (!barometer.healthy()) {
             cliSerial->println_P(PSTR("not healthy"));
         } else {
             cliSerial->printf_P(PSTR("Alt: %0.2fm, Raw: %f Temperature: %.1f\n"),

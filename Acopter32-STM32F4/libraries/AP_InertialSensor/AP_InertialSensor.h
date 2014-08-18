@@ -12,7 +12,7 @@
    than 1 then redundent sensors may be available
  */
 #if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_LINUX || CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
-#define INS_MAX_INSTANCES 2
+#define INS_MAX_INSTANCES 3
 #else
 #define INS_MAX_INSTANCES 1
 #endif
@@ -168,6 +168,9 @@ public:
             _mpu6000_filter.set(filter_hz);
         }
     }
+
+    // get_filter - return filter in hz
+    virtual uint8_t get_filter() const { return _mpu6000_filter.get(); }
 
     virtual uint16_t error_count(void) const { return 0; }
     virtual bool healthy(void) const { return get_gyro_health() && get_accel_health(); }

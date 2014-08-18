@@ -316,16 +316,6 @@ bool DataFlash_VRBRAIN::BlockRead (uint8_t BufferNum, uint16_t IntPageAdr, void 
     return true;
 }
 
-uint8_t DataFlash_VRBRAIN::BufferRead (uint8_t BufferNum, uint16_t IntPageAdr)
-{
-    uint8_t tmp;
-    if (!BlockRead(BufferNum, IntPageAdr, &tmp, 1)) {
-        return 0;
-    }
-    return tmp;
-}
-
-
 // *** END OF INTERNAL FUNCTIONS ***
 
 void DataFlash_VRBRAIN::PageErase (uint16_t PageAdr)

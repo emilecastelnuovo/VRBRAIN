@@ -108,6 +108,7 @@ public:
         _roll_scaler(1),
         _pitch_scaler(1),
         _collective_scalar(1),
+        _collective_scalar_manual(1),
         _collective_out(0),
         _collective_mid_pwm(0),
         _rotor_desired(0),
@@ -198,6 +199,10 @@ public:
     // set_delta_phase_angle for setting variable phase angle compensation and force
     // recalculation of collective factors
     void set_delta_phase_angle(int16_t angle);
+
+    // get_motor_mask - returns a bitmask of which outputs are being used for motors or servos (1 means being used)
+    //  this can be used to ensure other pwm outputs (i.e. for servos) do not conflict
+    virtual uint16_t    get_motor_mask();
 
 protected:
 

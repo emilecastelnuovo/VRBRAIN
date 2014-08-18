@@ -1,4 +1,4 @@
-// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: t -*-
+// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
 #include "AP_TECS.h"
 #include <AP_HAL.h>
@@ -117,7 +117,7 @@ const AP_Param::GroupInfo AP_TECS::var_info[] PROGMEM = {
     // @User: User
     AP_GROUPINFO("LAND_ARSPD", 12, AP_TECS, _landAirspeed, -1),
 
-    // @Param; LAND_THR
+    // @Param: LAND_THR
     // @DisplayName: Cruise throttle during landing approach (percentage)
     // @Description: Use this parameter instead of LAND_ASPD if your platform does not have an airspeed sensor.  It is the cruise throttle during landing approach.  If it is negative if TECS_LAND_ASPD is in use then this value is not used during landing.
     // @Range: -1 to 100
@@ -132,6 +132,30 @@ const AP_Param::GroupInfo AP_TECS::var_info[] PROGMEM = {
 	// @Increment: 0.1
 	// @User: Advanced
     AP_GROUPINFO("LAND_SPDWGT", 14, AP_TECS, _spdWeightLand, 1.0f),
+
+    // @Param: PITCH_MAX
+    // @DisplayName: Maximum pitch in auto flight
+    // @Description: This controls maximum pitch up in automatic throttle modes. If this is set to zero then LIM_PITCH_MAX is used instead. The purpose of this parameter is to allow the use of a smaller pitch range when in automatic flight than what is used in FBWA mode.
+	// @Range: 0 45
+	// @Increment: 1
+	// @User: Advanced
+    AP_GROUPINFO("PITCH_MAX", 15, AP_TECS, _pitch_max, 0),
+
+    // @Param: PITCH_MIN
+    // @DisplayName: Minimum pitch in auto flight
+    // @Description: This controls minimum pitch in automatic throttle modes. If this is set to zero then LIM_PITCH_MIN is used instead. The purpose of this parameter is to allow the use of a smaller pitch range when in automatic flight than what is used in FBWA mode. Note that TECS_PITCH_MIN should be a negative number.
+	// @Range: -45 0
+	// @Increment: 1
+	// @User: Advanced
+    AP_GROUPINFO("PITCH_MIN", 16, AP_TECS, _pitch_min, 0),
+
+    // @Param: LAND_SINK
+    // @DisplayName: Sink rate for final landing stage
+    // @Description: The sink rate in meters/second for the final stage of landing.
+	// @Range: 0.0 to 2.0
+	// @Increment: 0.1
+	// @User: Advanced
+    AP_GROUPINFO("LAND_SINK", 17, AP_TECS, _land_sink, 0.25f),
 
     AP_GROUPEND
 };
@@ -337,6 +361,12 @@ void AP_TECS::_update_height_demand(void)
 	_hgt_dem_adj = 0.05f * _hgt_dem + 0.95f * _hgt_dem_adj_last;
     _hgt_rate_dem = (_hgt_dem_adj - _hgt_dem_adj_last) / 0.1f;
 	_hgt_dem_adj_last = _hgt_dem_adj;
+
+    // in final landing stage force height rate demand to the
+    // configured sink rate
+	if (_flight_stage == FLIGHT_LAND_FINAL) {
+        _hgt_rate_dem = - _land_sink;
+	}
 }
 
 void AP_TECS::_detect_underspeed(void) 
@@ -656,8 +686,24 @@ void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
 	_EAS_dem = EAS_dem_cm * 0.01f;
     _THRmaxf  = aparm.throttle_max * 0.01f;
     _THRminf  = aparm.throttle_min * 0.01f;
-	_PITCHmaxf = 0.000174533f * aparm.pitch_limit_max_cd;
-	_PITCHminf = 0.000174533f * aparm.pitch_limit_min_cd;
+
+	// work out the maximum and minimum pitch
+	// if TECS_PITCH_{MAX,MIN} isn't set then use
+	// LIM_PITCH_{MAX,MIN}. Don't allow TECS_PITCH_{MAX,MIN} to be
+	// larger than LIM_PITCH_{MAX,MIN}
+	if (_pitch_max <= 0) {
+		_PITCHmaxf = aparm.pitch_limit_max_cd * 0.01f;
+	} else {
+		_PITCHmaxf = min(_pitch_max, aparm.pitch_limit_max_cd * 0.01f);
+	}
+	if (_pitch_min >= 0) {
+		_PITCHminf = aparm.pitch_limit_min_cd * 0.01f;
+	} else {
+		_PITCHminf = max(_pitch_min, aparm.pitch_limit_min_cd * 0.01f);
+	}
+	// convert to radians
+	_PITCHmaxf = radians(_PITCHmaxf);
+	_PITCHminf = radians(_PITCHminf);
 	_flight_stage = flight_stage;
 
 	// initialise selected states and variables if DT > 1 second or in climbout

@@ -16,6 +16,7 @@ cppSRCS_$(d) += AP_Baro_HIL.cpp
 cppSRCS_$(d) += AP_Baro_BMP085.cpp
 cppSRCS_$(d) += AP_Baro_MS5611.cpp
 cppSRCS_$(d) += AP_Baro_PX4.cpp
+cppSRCS_$(d) += AP_Baro_Glitch.cpp
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)

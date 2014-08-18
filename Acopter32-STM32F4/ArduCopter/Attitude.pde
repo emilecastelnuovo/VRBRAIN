@@ -100,8 +100,8 @@ static void update_thr_cruise()
     if (throttle > g.throttle_min && abs(climb_rate) < 60 && labs(ahrs.roll_sensor) < 500 && labs(ahrs.pitch_sensor) < 500) {
         throttle_avg = throttle_avg * 0.99f + (float)throttle * 0.01f;
         g.throttle_cruise = throttle_avg;
-    // update position controller
-    pos_control.set_throttle_hover(throttle_avg);
+        // update position controller
+        pos_control.set_throttle_hover(throttle_avg);
     }
 }
 
@@ -234,7 +234,7 @@ static float get_throttle_surface_tracking(int16_t target_rate, float current_al
     uint32_t now = millis();
 
     // reset target altitude if this controller has just been engaged
-    if( now - last_call_ms > 200 ) {
+    if (now - last_call_ms > SONAR_TIMEOUT_MS) {
         target_sonar_alt = sonar_alt + current_alt_target - current_loc.alt;
     }
     last_call_ms = now;

@@ -107,6 +107,9 @@ static void init_ardupilot()
     // initialise sonar
     init_sonar();
 
+    // initialise battery monitoring
+    battery.init();
+
     // init the GCS
     gcs[0].init(hal.uartA);
 
@@ -119,7 +122,12 @@ static void init_ardupilot()
     gcs[1].setup_uart(hal.uartC, map_baudrate(g.serial1_baud), 128, SERIAL1_BUFSIZE);
 
 #if MAVLINK_COMM_NUM_BUFFERS > 2
-    gcs[2].setup_uart(hal.uartD, map_baudrate(g.serial2_baud), 128, SERIAL2_BUFSIZE);
+    if (g.serial2_protocol == SERIAL2_FRSKY_DPORT || 
+        g.serial2_protocol == SERIAL2_FRSKY_SPORT) {
+        frsky_telemetry.init(hal.uartD, g.serial2_protocol);
+    } else {
+        gcs[2].setup_uart(hal.uartD, map_baudrate(g.serial2_baud), 128, SERIAL2_BUFSIZE);
+    }
 #endif
 
     mavlink_system.sysid = g.sysid_this_mav;
@@ -174,8 +182,8 @@ static void init_ardupilot()
     relay.init();
 
 #if FENCE_TRIGGERED_PIN > 0
-    hal.gpio->pinMode(FENCE_TRIGGERED_PIN, OUTPUT);
-    digitalWrite(FENCE_TRIGGERED_PIN, LOW);
+    hal.gpio->pinMode(FENCE_TRIGGERED_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(FENCE_TRIGGERED_PIN, 0);
 #endif
 
     /*
@@ -282,6 +290,12 @@ static void set_mode(enum FlightMode mode)
     // perform any cleanup required for prev flight mode
     exit_mode(control_mode);
 
+    // cancel inverted flight
+    auto_state.inverted_flight = false;
+
+    // don't cross-track when starting a mission
+    auto_state.next_wp_no_crosstrack = true;
+
     // set mode
     previous_mode = control_mode;
     control_mode = mode;
@@ -319,12 +333,12 @@ static void set_mode(enum FlightMode mode)
         auto_throttle_mode = true;
         cruise_state.locked_heading = false;
         cruise_state.lock_timer_ms = 0;
-        target_altitude_cm = current_loc.alt;
+        set_target_altitude_current();
         break;
 
     case FLY_BY_WIRE_B:
         auto_throttle_mode = true;
-        target_altitude_cm = current_loc.alt;
+        set_target_altitude_current();
         break;
 
     case CIRCLE:
@@ -336,6 +350,8 @@ static void set_mode(enum FlightMode mode)
     case AUTO:
         auto_throttle_mode = true;
         next_WP_loc = prev_WP_loc = current_loc;
+        auto_state.highest_airspeed = 0;
+        auto_state.initial_pitch_cd = ahrs.pitch_sensor;
         // start or resume the mission, based on MIS_AUTORESET
         mission.start_or_resume();
         break;
@@ -440,8 +456,8 @@ static void check_short_failsafe()
 static void startup_INS_ground(bool do_accel_init)
 {
 #if HIL_MODE != HIL_MODE_DISABLED
-    while (!barometer.healthy) {
-        // the barometer becomes healthy when we get the first
+    while (barometer.get_last_update() == 0) {
+        // the barometer begins updating when we get the first
         // HIL_STATE message
         gcs_send_text_P(SEVERITY_LOW, PSTR("Waiting for first HIL_STATE message"));
         delay(1000);
@@ -612,4 +628,26 @@ static bool should_log(uint32_t mask)
         in_mavlink_delay = false;
     }
     return ret;
+}
+
+/*
+  send FrSky telemetry. Should be called at 5Hz by scheduler
+ */
+static void telemetry_send(void)
+{
+#if FRSKY_TELEM_ENABLED == ENABLED
+    frsky_telemetry.send_frames((uint8_t)control_mode, 
+                                (AP_Frsky_Telem::FrSkyProtocol)g.serial2_protocol.get());
+#endif
+}
+
+
+/*
+  return throttle percentage from 0 to 100
+ */
+static uint8_t throttle_percentage(void)
+{
+    // to get the real throttle we need to use norm_output() which
+    // returns a number from -1 to 1.
+    return constrain_int16(50*(channel_throttle->norm_output()+1), 0, 100);
 }

@@ -20,6 +20,8 @@
 #define HAL_BOARD_VRBRAIN  8
 #define HAL_BOARD_EMPTY    99
 
+// default board subtype is -1
+#define HAL_BOARD_SUBTYPE_NONE -1
 
 /**
    HAL Linux sub-types
@@ -182,7 +184,7 @@
 #define HAL_BARO_DEFAULT HAL_BARO_MS5611_SPI
 #define HAL_COMPASS_DEFAULT HAL_COMPASS_HMC5843
 #define HAL_SERIAL0_BAUD_DEFAULT 115200
-
+#define CONFIG_HAL_BOARD_SUBTYPE HAL_BOARD_SUBTYPE_NONE
 #else
 #error "Unknown CONFIG_HAL_BOARD type"
 #endif

@@ -131,11 +131,6 @@ static void init_ardupilot()
 
     BoardConfig.init();
 
-    // FIX: this needs to be the inverse motors mask
-    ServoRelayEvents.set_channel_mask(0xFFF0);
-
-    relay.init();
-
     bool enable_external_leds = true;
 
     // init EPM cargo gripper
@@ -174,8 +169,14 @@ static void init_ardupilot()
     // a MUX is used
     gcs[1].setup_uart(hal.uartC, map_baudrate(g.serial1_baud), 128, 128);
 #endif
+
 #if MAVLINK_COMM_NUM_BUFFERS > 2
-    gcs[2].setup_uart(hal.uartD, map_baudrate(g.serial2_baud), 128, 128);
+    if (g.serial2_protocol == SERIAL2_FRSKY_DPORT || 
+        g.serial2_protocol == SERIAL2_FRSKY_SPORT) {
+        frsky_telemetry.init(hal.uartD, g.serial2_protocol);
+    } else {
+        gcs[2].setup_uart(hal.uartD, map_baudrate(g.serial2_baud), 128, 128);
+    }
 #endif
 
     // identify ourselves correctly with the ground station
@@ -196,6 +197,11 @@ static void init_ardupilot()
 
     init_rc_in();               // sets up rc channels from radio
     init_rc_out();              // sets up motors and output to escs
+
+    // initialise which outputs Servo and Relay events can use
+    ServoRelayEvents.set_channel_mask(~motors.get_motor_mask());
+
+    relay.init();
 
     /*
      *  setup the 'main loop is dead' check. Note that this relies on
@@ -242,8 +248,8 @@ static void init_ardupilot()
 #endif // CLI_ENABLED
 
 #if HIL_MODE != HIL_MODE_DISABLED
-    while (!barometer.healthy) {
-        // the barometer becomes healthy when we get the first
+    while (barometer.get_last_update() == 0) {
+        // the barometer begins updating when we get the first
         // HIL_STATE message
         gcs_send_text_P(SEVERITY_LOW, PSTR("Waiting for first HIL_STATE message"));
         delay(1000);
@@ -383,3 +389,13 @@ static void check_usb_mux(void)
 #endif
 }
 
+/*
+  send FrSky telemetry. Should be called at 5Hz by scheduler
+ */
+static void telemetry_send(void)
+{
+#if FRSKY_TELEM_ENABLED == ENABLED
+    frsky_telemetry.send_frames((uint8_t)control_mode, 
+                                (AP_Frsky_Telem::FrSkyProtocol)g.serial2_protocol.get());
+#endif
+}

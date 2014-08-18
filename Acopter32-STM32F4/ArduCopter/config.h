@@ -81,7 +81,7 @@
 
 #define MAGNETOMETER ENABLED
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2
+#if HAL_CPU_CLASS < HAL_CPU_CLASS_75
  # define PARACHUTE DISABLED
  # define AC_RALLY DISABLED
 #endif
@@ -201,6 +201,10 @@
  # define THR_SURFACE_TRACKING_VELZ_MAX 150 // max vertical speed change while surface tracking with sonar
 #endif
 
+#ifndef SONAR_TIMEOUT_MS
+ # define SONAR_TIMEOUT_MS  1000            // desired sonar alt will reset to current sonar alt after this many milliseconds without a good sonar alt
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 // Channel 7 and 8 default options
 //
@@ -304,8 +308,8 @@
 
 //////////////////////////////////////////////////////////////////////////////
 //  EKF Checker
-#ifndef EKFCHECK_COMPASS_THRESHOLD_DEFAULT
- # define EKFCHECK_COMPASS_THRESHOLD_DEFAULT    0.6f    // EKF checker's default compass variance above which the EKF's horizontal position will be considered bad
+#ifndef EKFCHECK_THRESHOLD_DEFAULT
+ # define EKFCHECK_THRESHOLD_DEFAULT    0.6f    // EKF checker's default compass and velocity variance above which the EKF's horizontal position will be considered bad
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -444,7 +448,7 @@
  # define LAND_REQUIRE_MIN_THROTTLE_TO_DISARM ENABLED
 #endif
 #ifndef LAND_REPOSITION_DEFAULT
- # define LAND_REPOSITION_DEFAULT   1   // by default the pilot cannot override roll/pitch during landing
+ # define LAND_REPOSITION_DEFAULT   0   // by default the pilot cannot override roll/pitch during landing
 #endif
 #ifndef LAND_WITH_DELAY_MS
  # define LAND_WITH_DELAY_MS        4000    // default delay (in milliseconds) when a land-with-delay is triggered during a failsafe event
@@ -492,6 +496,10 @@
 
 #ifndef ACRO_BALANCE_PITCH
  #define ACRO_BALANCE_PITCH         1.0f
+#endif
+
+#ifndef ACRO_EXPO_DEFAULT
+ #define ACRO_EXPO_DEFAULT          0.3f
 #endif
 
 // Stabilize (angle controller) gains
@@ -565,7 +573,7 @@
  # define RATE_ROLL_D        		0.004f
 #endif
 #ifndef RATE_ROLL_IMAX
- # define RATE_ROLL_IMAX         	500
+ # define RATE_ROLL_IMAX         	1000
 #endif
 
 #ifndef RATE_PITCH_P
@@ -591,7 +599,7 @@
  # define RATE_YAW_D              	0.000f
 #endif
 #ifndef RATE_YAW_IMAX
- # define RATE_YAW_IMAX            	800
+ # define RATE_YAW_IMAX            	1000
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -692,7 +700,6 @@
  # define THROTTLE_ACCEL_IMAX 500
 #endif
 
-
 //////////////////////////////////////////////////////////////////////////////
 // Dataflash logging control
 //
@@ -748,6 +755,11 @@
 // use this to completely disable the CLI
 #ifndef CLI_ENABLED
   #  define CLI_ENABLED           ENABLED
+#endif
+
+//use this to completely disable FRSKY TELEM
+#ifndef FRSKY_TELEM_ENABLED
+  #  define FRSKY_TELEM_ENABLED          DISABLED
 #endif
 
 /*
