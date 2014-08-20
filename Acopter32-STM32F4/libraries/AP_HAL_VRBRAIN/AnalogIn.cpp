@@ -32,7 +32,7 @@ using namespace VRBRAIN;
 
 /* CHANNEL_READ_REPEAT: how many reads on a channel before using the value.
  * This seems to be determined empirically */
-#define CHANNEL_READ_REPEAT 1
+#define CHANNEL_READ_REPEAT 2
 
 VRBRAINAnalogIn::VRBRAINAnalogIn():
 	_vcc(VRBRAINAnalogSource(ANALOG_INPUT_BOARD_VCC))
