@@ -4,6 +4,7 @@
 #include <timer.h>
 #include <HardwareTimer.h>
 #include <systick.h>
+#include <stm32f4xx_pwr.h>
 
 using namespace VRBRAIN;
 
@@ -223,6 +224,15 @@ void VRBRAINScheduler::panic(const prog_char_t* errormsg) {
     //for(;;);
 }
 
+
 void VRBRAINScheduler::reboot(bool hold_in_bootloader) {
-    return;
+
+    if(hold_in_bootloader){
+	PWR_BackupAccessCmd(ENABLE);
+
+	/* XXX wow, this is evil - write a magic number into backup register zero */
+	*(uint32_t *)0x40002850 = 0xb007b007;
+    }
+
+    NVIC_SystemReset();
 }

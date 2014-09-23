@@ -17,14 +17,14 @@ typedef uint8_t U8;
 typedef uint32_t U32;
 typedef uint16_t U16;
 
-#define USBD_MANUFACTURER_STRING        "IBEGlab"
-#define USBD_PRODUCT_FS_STRING          "IBEG Virtual COM"
+#define USBD_MANUFACTURER_STRING        "Laser Navigation"
+#define USBD_PRODUCT_FS_STRING          "VRBRAIN v4.5"
 #define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
 
-#define USBD_VID                        0x0483
-#define USBD_PID                        0x5740
+#define USBD_VID                        0x27AC
+#define USBD_PID                        0x1145
 #define USBD_LANGID_STRING              0x409
 
 #define USB_RXFIFO_SIZE 256
