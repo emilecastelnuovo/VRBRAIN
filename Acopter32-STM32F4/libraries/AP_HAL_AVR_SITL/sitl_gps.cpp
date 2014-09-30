@@ -33,13 +33,15 @@ extern const AP_HAL::HAL& hal;
 static uint8_t next_gps_index;
 static uint8_t gps_delay;
 SITL_State::gps_data SITL_State::_gps_data[MAX_GPS_DELAY];
+bool SITL_State::_gps_has_basestation_position = false;
+SITL_State::gps_data SITL_State::_gps_basestation_data;
 
 // state of GPS emulation
-static struct {
+static struct gps_state {
 	/* pipe emulating UBLOX GPS serial stream */
 	int gps_fd, client_fd;
 	uint32_t last_update; // milliseconds
-} gps_state;
+} gps_state, gps2_state;
 
 /*
   hook for reading from the GPS pipe
@@ -79,6 +81,24 @@ int SITL_State::gps_pipe(void)
 }
 
 /*
+  setup GPS2 input pipe
+ */
+int SITL_State::gps2_pipe(void)
+{
+	int fd[2];
+	if (gps2_state.client_fd != 0) {
+		return gps2_state.client_fd;
+	}
+	pipe(fd);
+	gps2_state.gps_fd    = fd[1];
+	gps2_state.client_fd = fd[0];
+	gps2_state.last_update = _scheduler->millis();
+	AVR_SITL::SITLUARTDriver::_set_nonblocking(gps2_state.gps_fd);
+	AVR_SITL::SITLUARTDriver::_set_nonblocking(fd[0]);
+	return gps2_state.client_fd;
+}
+
+/*
   write some bytes from the simulated GPS
  */
 void SITL_State::_gps_write(const uint8_t *p, uint16_t size)
@@ -92,7 +112,11 @@ void SITL_State::_gps_write(const uint8_t *p, uint16_t size)
 				continue;
 			}
 		}
-		write(gps_state.gps_fd, p++, 1);
+		write(gps_state.gps_fd, p, 1);
+        if (_sitl->gps2_enable) {
+            write(gps2_state.gps_fd, p, 1);
+        }
+        p++;
 	}
 }
 
@@ -126,19 +150,14 @@ void SITL_State::_gps_send_ubx(uint8_t msgid, uint8_t *buf, uint16_t size)
 /*
   return GPS time of week in milliseconds
  */
-static uint32_t millis_time_of_week(void)
+static void gps_time(uint16_t *time_week, uint32_t *time_week_ms)
 {
-	struct tm tm;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	tm = *gmtime(&tv.tv_sec);
-	uint32_t tsec;
-	tsec = 
-		tm.tm_wday * 24 * 3600 + 
-		tm.tm_hour * 3600 +
-		tm.tm_min  * 60 +
-		tm.tm_sec;
-	return tsec + (tv.tv_usec/1000);
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    const uint32_t epoch = 86400*(10*365 + (1980-1969)/4 + 1 + 6 - 2) - 15;
+    uint32_t epoch_seconds = tv.tv_sec - epoch;
+    *time_week = epoch_seconds / (86400*7UL);
+    *time_week_ms = (epoch_seconds % (86400*7UL))*1000 + tv.tv_usec/1000;
 }
 
 /*
@@ -197,9 +216,13 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d)
 	const uint8_t MSG_POSLLH = 0x2;
 	const uint8_t MSG_STATUS = 0x3;
 	const uint8_t MSG_VELNED = 0x12;
-        const uint8_t MSG_SOL = 0x6;
+    const uint8_t MSG_SOL = 0x6;
+    uint16_t time_week;
+    uint32_t time_week_ms;
 
-	pos.time = hal.scheduler->millis(); // FIX
+    gps_time(&time_week, &time_week_ms);
+
+	pos.time = time_week_ms;
 	pos.longitude = d->longitude * 1.0e7;
 	pos.latitude  = d->latitude * 1.0e7;
 	pos.altitude_ellipsoid = d->altitude*1000.0;
@@ -207,7 +230,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d)
 	pos.horizontal_accuracy = 5;
 	pos.vertical_accuracy = 10;
 
-	status.time = millis_time_of_week();
+	status.time = time_week_ms;
 	status.fix_type = d->have_lock?3:0;
 	status.fix_status = d->have_lock?1:0;
 	status.differential_status = 0;
@@ -215,7 +238,7 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d)
 	status.time_to_first_fix = 0;
 	status.uptime = hal.scheduler->millis();
 
-	velned.time = status.time;
+	velned.time = time_week_ms;
 	velned.ned_north = 100.0 * d->speedN;
 	velned.ned_east  = 100.0 * d->speedE;
 	velned.ned_down  = 100.0 * d->speedD;
@@ -232,6 +255,8 @@ void SITL_State::_update_gps_ubx(const struct gps_data *d)
 	sol.fix_type = d->have_lock?3:0;
 	sol.fix_status = 221;
 	sol.satellites = d->have_lock?_sitl->gps_numsats:3;
+    sol.time = time_week_ms;
+    sol.week = time_week;
 
 	_gps_send_ubx(MSG_POSLLH, (uint8_t*)&pos, sizeof(pos));
 	_gps_send_ubx(MSG_STATUS, (uint8_t*)&status, sizeof(status));
@@ -298,14 +323,17 @@ void SITL_State::_update_gps_mtk(const struct gps_data *d)
     p.fix_type      = d->have_lock?3:1;
 
 	// the spec is not very clear, but the time field seems to be
-	// seconds since the start of the day in UTC time, done in powers
-	// of 100.  Quite bizarre.
+	// milliseconds since the start of the day in UTC time,
+	// done in powers of 100. 
+	// The date is powers of 100 as well, but in days since 1/1/2000
 	struct tm tm;
 	struct timeval tv;
+
 	gettimeofday(&tv, NULL);
 	tm = *gmtime(&tv.tv_sec);
+    uint32_t hsec = (tv.tv_usec / (10000*20)) * 20; // always multiple of 20
 
-    p.utc_time = tm.tm_sec + tm.tm_min*100 + tm.tm_hour*100*100;
+    p.utc_time = hsec + tm.tm_sec*100 + tm.tm_min*100*100 + tm.tm_hour*100*100*100;
 
     swap_uint32((uint32_t *)&p.latitude, 5);
     swap_uint32((uint32_t *)&p.utc_time, 1);
@@ -352,16 +380,18 @@ void SITL_State::_update_gps_mtk16(const struct gps_data *d)
     p.fix_type      = d->have_lock?3:1;
 
 	// the spec is not very clear, but the time field seems to be
-	// hundreadths of a second since the start of the day in UTC time,
+	// milliseconds since the start of the day in UTC time,
 	// done in powers of 100. 
-	// The data is powers of 100 as well, but in days since 1/1/2000
+	// The date is powers of 100 as well, but in days since 1/1/2000
 	struct tm tm;
 	struct timeval tv;
+
 	gettimeofday(&tv, NULL);
 	tm = *gmtime(&tv.tv_sec);
+    uint32_t hsec = (tv.tv_usec / (10000*20)) * 20; // always multiple of 20
 
-    p.utc_date = (tm.tm_year-2000) + tm.tm_mon*100 + tm.tm_mday*100*100;
-    p.utc_time = tv.tv_usec/10000 + tm.tm_sec*100 + tm.tm_min*100*100 + tm.tm_hour*100*100*100;
+    p.utc_date = (tm.tm_year-100) + ((tm.tm_mon+1)*100) + (tm.tm_mday*100*100);
+    p.utc_time = hsec + tm.tm_sec*100 + tm.tm_min*100*100 + tm.tm_hour*100*100*100;
 
 	p.hdop          = 115;
 
@@ -392,7 +422,7 @@ void SITL_State::_update_gps_mtk19(const struct gps_data *d)
 	    uint8_t ck_a;
 	    uint8_t ck_b;
     } p;
-
+    
 	p.preamble1     = 0xd1;
 	p.preamble2     = 0xdd;
 	p.size          = sizeof(p) - 5;
@@ -408,16 +438,18 @@ void SITL_State::_update_gps_mtk19(const struct gps_data *d)
     p.fix_type      = d->have_lock?3:1;
 
 	// the spec is not very clear, but the time field seems to be
-	// hundreadths of a second since the start of the day in UTC time,
+	// milliseconds since the start of the day in UTC time,
 	// done in powers of 100. 
-	// The data is powers of 100 as well, but in days since 1/1/2000
+	// The date is powers of 100 as well, but in days since 1/1/2000
 	struct tm tm;
 	struct timeval tv;
+
 	gettimeofday(&tv, NULL);
 	tm = *gmtime(&tv.tv_sec);
+    uint32_t millisec = (tv.tv_usec / (1000*200)) * 200; // always multiple of 200
 
-    p.utc_date = (tm.tm_year-2000) + tm.tm_mon*100 + tm.tm_mday*100*100;
-    p.utc_time = tv.tv_usec/10000 + tm.tm_sec*100 + tm.tm_min*100*100 + tm.tm_hour*100*100*100;
+    p.utc_date = (tm.tm_year-100) + ((tm.tm_mon+1)*100) + (tm.tm_mday*100*100);
+    p.utc_time = millisec + tm.tm_sec*1000 + tm.tm_min*1000*100 + tm.tm_hour*1000*100*100;
 
 	p.hdop          = 115;
 
@@ -478,10 +510,10 @@ void SITL_State::_update_gps_nmea(const struct gps_data *d)
     tm = gmtime(&tv.tv_sec);
 
     // format time string
-    snprintf(tstring, sizeof(tstring), "%02d%02d%05.3f", tm->tm_hour, tm->tm_min, tm->tm_sec + tv.tv_usec*1.0e-6);
+    snprintf(tstring, sizeof(tstring), "%02u%02u%06.3f", tm->tm_hour, tm->tm_min, tm->tm_sec + tv.tv_usec*1.0e-6);
 
     // format date string
-    snprintf(dstring, sizeof(dstring), "%02d%02d%02d", tm->tm_mday, tm->tm_mon, tm->tm_year % 100);
+    snprintf(dstring, sizeof(dstring), "%02u%02u%02u", tm->tm_mday, tm->tm_mon+1, tm->tm_year % 100);
 
     // format latitude
     double deg = fabs(d->latitude);
@@ -520,6 +552,170 @@ void SITL_State::_update_gps_nmea(const struct gps_data *d)
                      dstring);
 }
 
+void SITL_State::_sbp_send_message(uint16_t msg_type, uint16_t sender_id, uint8_t len, uint8_t *payload)
+{
+	if (len != 0 && payload == 0) {
+		return; //SBP_NULL_ERROR;
+	}
+
+	uint8_t preamble = 0x55;
+	_gps_write(&preamble, 1);
+	_gps_write((uint8_t*)&msg_type, 2);
+	_gps_write((uint8_t*)&sender_id, 2);	
+	_gps_write(&len, 1);
+	if (len > 0) {
+		_gps_write((uint8_t*)payload, len);
+	}
+
+	uint16_t crc;
+	crc = crc16_ccitt((uint8_t*)&(msg_type), 2, 0);
+	crc = crc16_ccitt((uint8_t*)&(sender_id), 2, crc);
+	crc = crc16_ccitt(&(len), 1, crc);
+	crc = crc16_ccitt(payload, len, crc);
+	_gps_write((uint8_t*)&crc, 2);
+}
+
+
+void SITL_State::_update_gps_sbp(const struct gps_data *d, bool sim_rtk)
+{
+    struct PACKED sbp_gps_time_t {
+        uint16_t wn;     //< GPS week number
+        uint32_t tow;    //< GPS Time of Week rounded to the nearest ms
+        int32_t ns;      //< Nanosecond remainder of rounded tow
+        uint8_t flags;   //< Status flags (reserved)
+    } t;
+    struct PACKED sbp_pos_llh_t {
+        uint32_t tow;         //< GPS Time of Week
+        double lat;           //< Latitude
+        double lon;           //< Longitude
+        double height;        //< Height
+        uint16_t h_accuracy;  //< Horizontal position accuracy estimate
+        uint16_t v_accuracy;  //< Vertical position accuracy estimate
+        uint8_t n_sats;       //< Number of satellites used in solution
+        uint8_t flags;        //< Status flags
+    } pos;
+    struct PACKED sbp_vel_ned_t {
+        uint32_t tow;          //< GPS Time of Week
+        int32_t n;             //< Velocity North coordinate
+        int32_t e;             //< Velocity East coordinate
+        int32_t d;             //< Velocity Down coordinate
+        uint16_t h_accuracy;   //< Horizontal velocity accuracy estimate
+        uint16_t v_accuracy;   //< Vertical velocity accuracy estimate
+        uint8_t n_sats;        //< Number of satellites used in solution
+        uint8_t flags;         //< Status flags (reserved)
+    } velned;
+    struct PACKED sbp_dops_t {
+        uint32_t tow;    //< GPS Time of Week
+        uint16_t gdop;   //< Geometric Dilution of Precision
+        uint16_t pdop;   //< Position Dilution of Precision
+        uint16_t tdop;   //< Time Dilution of Precision
+        uint16_t hdop;   //< Horizontal Dilution of Precision
+        uint16_t vdop;   //< Vertical Dilution of Precision
+    } dops;
+    struct PACKED sbp_baseline_ecef_t {
+        uint32_t tow;        //< GPS Time of Week
+        int32_t x;           //< Baseline ECEF X coordinate
+        int32_t y;           //< Baseline ECEF Y coordinate
+        int32_t z;           //< Baseline ECEF Z coordinate
+        uint16_t accuracy;   //< Position accuracy estimate
+        uint8_t n_sats;      //< Number of satellites used in solution
+        uint8_t flags;       //< Status flags (reserved)
+    } baseline;
+    static const uint16_t SBP_HEARTBEAT_MSGTYPE = 0xFFFF;
+    static const uint16_t SBP_GPS_TIME_MSGTYPE = 0x0100;
+    static const uint16_t SBP_DOPS_MSGTYPE = 0x0206;
+    static const uint16_t SBP_POS_LLH_MSGTYPE = 0x0201;
+    static const uint16_t SBP_BASELINE_ECEF_MSGTYPE = 0x0202;
+    static const uint16_t SBP_VEL_NED_MSGTYPE = 0x0205;
+
+    uint16_t time_week;
+    uint32_t time_week_ms;
+
+    gps_time(&time_week, &time_week_ms);
+
+    t.wn = time_week;
+    t.tow = time_week_ms;
+    t.ns = 0;
+    t.flags = 0;
+    _sbp_send_message(SBP_GPS_TIME_MSGTYPE, 0x2222, sizeof(t), (uint8_t*)&t);
+
+    if (!d->have_lock) {
+    	return;
+    }
+
+    pos.tow = time_week_ms;
+    pos.lon = d->longitude;
+    pos.lat= d->latitude;
+    pos.height = d->altitude;
+    pos.h_accuracy = 5e3;
+    pos.v_accuracy = 10e3;
+    pos.n_sats = _sitl->gps_numsats;
+    pos.flags = 0;
+    _sbp_send_message(SBP_POS_LLH_MSGTYPE, 0x2222, sizeof(pos), (uint8_t*)&pos);
+
+    velned.tow = time_week_ms;
+    velned.n = 1e3 * d->speedN;
+    velned.e  = 1e3 * d->speedE;
+    velned.d  = 1e3 * d->speedD;
+    velned.h_accuracy = 5e3;
+    velned.v_accuracy = 5e3;
+    velned.n_sats = _sitl->gps_numsats;
+    velned.flags = 0;
+    _sbp_send_message(SBP_VEL_NED_MSGTYPE, 0x2222, sizeof(velned), (uint8_t*)&velned);
+
+    static uint32_t do_every_count = 0;
+    if (do_every_count % 5 == 0) {
+
+	    dops.tow = time_week_ms;
+	    dops.gdop = 1;
+	    dops.pdop = 1;
+	    dops.tdop = 1;
+	    dops.hdop = 100;
+	    dops.vdop = 1;    
+	    _sbp_send_message(SBP_DOPS_MSGTYPE, 0x2222, sizeof(dops), (uint8_t*)&dops);
+
+	    uint32_t system_flags = 0;
+	    _sbp_send_message(SBP_HEARTBEAT_MSGTYPE, 0x2222, sizeof(system_flags), (uint8_t*)&system_flags);
+    	
+    }
+    do_every_count++;
+
+
+    //Also send baseline messages
+    if (sim_rtk && _gps_has_basestation_position) {
+
+        Vector3d homeLLH;
+        Vector3d currentLLH;
+        Vector3d homeECEF;
+        Vector3d currentECEF;
+        Vector3d baselineVector;
+
+        homeLLH[0] = _gps_basestation_data.latitude * DEG_TO_RAD_DOUBLE;
+        homeLLH[1] = _gps_basestation_data.longitude * DEG_TO_RAD_DOUBLE;
+        homeLLH[2] = _gps_basestation_data.altitude;
+
+        currentLLH[0] = d->latitude * DEG_TO_RAD_DOUBLE;
+        currentLLH[1] = d->longitude * DEG_TO_RAD_DOUBLE;
+        currentLLH[2] = d->altitude;
+
+        wgsllh2ecef(homeLLH, homeECEF);
+        wgsllh2ecef(currentLLH, currentECEF);
+
+        baselineVector = currentECEF - homeECEF;
+
+        baseline.tow = time_week_ms;
+        baseline.x = (int32_t) (baselineVector[0]*1e3); //Convert to MM
+        baseline.y = (int32_t) (baselineVector[1]*1e3); //Convert to MM
+        baseline.z = (int32_t) (baselineVector[2]*1e3); //Convert to MM
+        baseline.accuracy = 0;
+        baseline.n_sats = _sitl->gps_numsats;
+        baseline.flags = 1;
+        //printf("Sending baseline with length %f\n",baselineVector.length());
+        _sbp_send_message(SBP_BASELINE_ECEF_MSGTYPE, 0x2222, sizeof(baseline), (uint8_t*)&baseline);
+    }
+
+}
+
 /*
   possibly send a new GPS packet
  */
@@ -530,8 +726,22 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
 	char c;
     Vector3f glitch_offsets = _sitl->gps_glitch;
 
-	// 5Hz, to match the real config in APM
-	if (hal.scheduler->millis() - gps_state.last_update < 1000/_sitl->gps_hertz) {
+    //Capture current position as basestation location for 
+    if (!_gps_has_basestation_position) {
+    	if (have_lock) {
+    		_gps_basestation_data.latitude = latitude;
+    		_gps_basestation_data.longitude = longitude;
+    		_gps_basestation_data.altitude = altitude;
+    		_gps_basestation_data.speedN = speedN;
+    		_gps_basestation_data.speedE = speedE;
+    		_gps_basestation_data.speedD = speedD;
+    		_gps_basestation_data.have_lock = have_lock;
+    		_gps_has_basestation_position = true;
+    	}
+    }
+
+	// run at configured GPS rate (default 5Hz)
+	if ((hal.scheduler->millis() - gps_state.last_update) < (uint32_t)(1000/_sitl->gps_hertz)) {
 		return;
 	}
 
@@ -539,8 +749,12 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
 	if (gps_state.gps_fd != 0) {
 		read(gps_state.gps_fd, &c, 1);
 	}
+	if (gps2_state.gps_fd != 0) {
+		read(gps2_state.gps_fd, &c, 1);
+	}
 
 	gps_state.last_update = hal.scheduler->millis();
+	gps2_state.last_update = hal.scheduler->millis();
 
 	d.latitude = latitude + glitch_offsets.x;
 	d.longitude = longitude + glitch_offsets.y;
@@ -552,7 +766,7 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
 
 	// add in some GPS lag
 	_gps_data[next_gps_index++] = d;
-	if (next_gps_index >= gps_delay) {
+	if (next_gps_index >= gps_delay+1) {
 		next_gps_index = 0;
 	}
 
@@ -566,7 +780,7 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
 		}
 	}
 
-	if (gps_state.gps_fd == 0) {
+	if (gps_state.gps_fd == 0 && gps2_state.gps_fd == 0) {
 		return;
 	}
 
@@ -594,6 +808,15 @@ void SITL_State::_update_gps(double latitude, double longitude, float altitude,
 	case SITL::GPS_TYPE_NMEA:
 		_update_gps_nmea(&d);
 		break;
+
+	case SITL::GPS_TYPE_SBP:
+		_update_gps_sbp(&d, false);
+		break;
+
+	case SITL::GPS_TYPE_SBP_RTK:
+		_update_gps_sbp(&d, true);
+		break;
+
 	}
 }
 

@@ -220,7 +220,8 @@ void VRBRAINScheduler::system_initialized()
 }
 
 void VRBRAINScheduler::panic(const prog_char_t* errormsg) {
-   hal.console->println_P(errormsg);
+   hal.uartA->println_P(errormsg);
+   hal.uartC->println_P(errormsg);
     //for(;;);
 }
 

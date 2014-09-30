@@ -94,7 +94,7 @@ protected:
     int16_t _num_channels;
     int16_t _active_channel;
     uint16_t _channel_repeat_count;
-
+    
 private:
     // On Flymaple, VCC measurement is at pin 20. VCC (=VIN) of 5V is only present
     // if external voltage (not USB) is connected. Also there is a voltage

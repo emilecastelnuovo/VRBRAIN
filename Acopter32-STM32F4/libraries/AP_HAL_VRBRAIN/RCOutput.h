@@ -21,6 +21,7 @@
 #define MOTORID11 10
 #define MOTORID12 11
 class VRBRAIN::VRBRAINRCOutput : public AP_HAL::RCOutput {
+public:
     void     init(void* implspecific);
     void     set_freq(uint32_t chmask, uint16_t freq_hz);
     uint16_t get_freq(uint8_t ch);

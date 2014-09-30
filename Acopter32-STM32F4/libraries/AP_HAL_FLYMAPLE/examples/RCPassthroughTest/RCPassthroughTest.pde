@@ -22,8 +22,8 @@ void multiread(AP_HAL::RCInput* in, uint16_t* channels) {
 
 void individualread(AP_HAL::RCInput* in, uint16_t* channels) {
     /* individual channel read method: */
-    uint8_t valid;
-    valid = in->valid_channels();
+    bool valid;
+    valid = in->new_input();
     for (int i = 0; i < 8; i++) {
         channels[i] = in->read(i);
     }
@@ -78,9 +78,11 @@ void loop (void) {
 
 void setup (void) {
 //    hal.scheduler->delay(5000);
-    hal.gpio->pinMode(13, GPIO_OUTPUT);
+    hal.gpio->pinMode(13, HAL_GPIO_OUTPUT);
     hal.gpio->write(13, 0);
-    hal.rcout->enable_mask(0x000000FF);
+    for (uint8_t i=0; i<16; i++) {
+        hal.rcout->enable_ch(i);
+    }
 
     /* Bottom 4 channels at 400hz (like on a quad) */
     hal.rcout->set_freq(0x0000000F, 400);

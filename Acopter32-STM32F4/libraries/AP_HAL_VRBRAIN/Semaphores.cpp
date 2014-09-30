@@ -25,7 +25,7 @@ bool VRBRAINSemaphore::give() {
 
 bool VRBRAINSemaphore::take(uint32_t timeout_ms) {
     if (hal.scheduler->in_timerprocess()) {
-        hal.scheduler->panic(PSTR("PANIC: AVRSemaphore::take used from "
+        hal.scheduler->panic(PSTR("PANIC: VRBRAINSemaphore::take used from "
                     "inside timer process"));
         return false; /* Never reached - panic does not return */
     }

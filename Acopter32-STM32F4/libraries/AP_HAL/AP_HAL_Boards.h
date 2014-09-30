@@ -189,6 +189,9 @@
 #error "Unknown CONFIG_HAL_BOARD type"
 #endif
 
+#ifndef CONFIG_HAL_BOARD_SUBTYPE
+#error "No CONFIG_HAL_BOARD_SUBTYPE set"
+#endif
 
 #endif // __AP_HAL_BOARDS_H__
 

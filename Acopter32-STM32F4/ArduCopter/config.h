@@ -301,15 +301,30 @@
 #define FS_GCS_ENABLED_ALWAYS_RTL           1
 #define FS_GCS_ENABLED_CONTINUE_MISSION     2
 
+// pre-arm baro vs inertial nav max alt disparity
+#ifndef PREARM_MAX_ALT_DISPARITY_CM
+ # define PREARM_MAX_ALT_DISPARITY_CM       200     // barometer and inertial nav altitude must be within this many centimeters
+#endif
+
 // pre-arm check max velocity
 #ifndef PREARM_MAX_VELOCITY_CMS
  # define PREARM_MAX_VELOCITY_CMS           50.0f   // vehicle must be travelling under 50cm/s before arming
 #endif
 
+// arming check's maximum acceptable accelerometer vector difference (in m/s/s) between primary and backup accelerometers
+#ifndef PREARM_MAX_ACCEL_VECTOR_DIFF
+  #define PREARM_MAX_ACCEL_VECTOR_DIFF  1.0f    // pre arm accel check will fail if primary and backup accelerometer vectors differ by 1m/s/s
+#endif
+
+// arming check's maximum acceptable rotation rate difference (in rad/sec) between primary and backup gyros
+#ifndef PREARM_MAX_GYRO_VECTOR_DIFF
+  #define PREARM_MAX_GYRO_VECTOR_DIFF   0.35f   // pre arm gyro check will fail if primary and backup gyro vectors differ by 0.35 rad/sec (=20deg/sec)
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 //  EKF Checker
 #ifndef EKFCHECK_THRESHOLD_DEFAULT
- # define EKFCHECK_THRESHOLD_DEFAULT    0.6f    // EKF checker's default compass and velocity variance above which the EKF's horizontal position will be considered bad
+ # define EKFCHECK_THRESHOLD_DEFAULT    0.8f    // EKF checker's default compass and velocity variance above which the EKF's horizontal position will be considered bad
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -339,6 +354,11 @@
   # define COMPASS_OFFSETS_MAX          500
  #endif
 #endif
+
+// arming check's maximum acceptable vector difference between internal and external compass after vectors are normalized to field length of 1.0
+#ifndef COMPASS_ACCEPTABLE_VECTOR_DIFF
+  #define COMPASS_ACCEPTABLE_VECTOR_DIFF    0.75    // pre arm compass check will fail if internal vs external compass direction differ by more than 45 degrees
+ #endif
 
 //////////////////////////////////////////////////////////////////////////////
 //  OPTICAL_FLOW
@@ -444,11 +464,20 @@
 #ifndef LAND_DETECTOR_TRIGGER
  # define LAND_DETECTOR_TRIGGER 50    // number of 50hz iterations with near zero climb rate and low throttle that triggers landing complete.
 #endif
+#ifndef LAND_DETECTOR_MAYBE_TRIGGER
+ # define LAND_DETECTOR_MAYBE_TRIGGER   10  // number of 50hz iterations with near zero climb rate and low throttle that means we might be landed (used to reset horizontal position targets to prevent tipping over)
+#endif
+#ifndef LAND_DETECTOR_CLIMBRATE_MAX
+# define LAND_DETECTOR_CLIMBRATE_MAX    30  // vehicle climb rate must be between -30 and +30 cm/s
+#endif
+#ifndef LAND_DETECTOR_ROTATION_MAX
+ # define LAND_DETECTOR_ROTATION_MAX    0.50f   // vehicle rotation must be below 0.5 rad/sec (=30deg/sec for) vehicle to consider itself landed
+#endif
 #ifndef LAND_REQUIRE_MIN_THROTTLE_TO_DISARM // require pilot to reduce throttle to minimum before vehicle will disarm
  # define LAND_REQUIRE_MIN_THROTTLE_TO_DISARM ENABLED
 #endif
 #ifndef LAND_REPOSITION_DEFAULT
- # define LAND_REPOSITION_DEFAULT   0   // by default the pilot cannot override roll/pitch during landing
+ # define LAND_REPOSITION_DEFAULT   1   // by default the pilot can override roll/pitch during landing
 #endif
 #ifndef LAND_WITH_DELAY_MS
  # define LAND_WITH_DELAY_MS        4000    // default delay (in milliseconds) when a land-with-delay is triggered during a failsafe event
@@ -656,8 +685,8 @@
  # define THR_MAX_DEFAULT       1000            // maximum throttle sent to the motors
 #endif
 
-#ifndef THROTTLE_IN_DEADBAND
-# define THROTTLE_IN_DEADBAND    100            // the throttle input channel's deadband in PWM
+#ifndef THR_DZ_DEFAULT
+# define THR_DZ_DEFAULT         100             // the deadzone above and below mid throttle while in althold or loiter
 #endif
 
 #ifndef ALT_HOLD_P
@@ -666,7 +695,21 @@
 
 // RATE control
 #ifndef THROTTLE_RATE_P
- # define THROTTLE_RATE_P       6.0f
+ # define THROTTLE_RATE_P       5.0f
+#endif
+
+// Throttle Accel control
+#ifndef THROTTLE_ACCEL_P
+ # define THROTTLE_ACCEL_P      0.50f
+#endif
+#ifndef THROTTLE_ACCEL_I
+ # define THROTTLE_ACCEL_I      1.00f
+#endif
+#ifndef THROTTLE_ACCEL_D
+ # define THROTTLE_ACCEL_D      0.0f
+#endif
+#ifndef THROTTLE_ACCEL_IMAX
+ # define THROTTLE_ACCEL_IMAX   800
 #endif
 
 // default maximum vertical velocity and acceleration the pilot may request
@@ -684,20 +727,6 @@
 // the acceleration used to define the distance-velocity curve
 #ifndef ALT_HOLD_ACCEL_MAX
  # define ALT_HOLD_ACCEL_MAX 250    // if you change this you must also update the duplicate declaration in AC_WPNav.h
-#endif
-
-// Throttle Accel control
-#ifndef THROTTLE_ACCEL_P
- # define THROTTLE_ACCEL_P  0.75f
-#endif
-#ifndef THROTTLE_ACCEL_I
- # define THROTTLE_ACCEL_I  1.50f
-#endif
-#ifndef THROTTLE_ACCEL_D
- # define THROTTLE_ACCEL_D 0.0f
-#endif
-#ifndef THROTTLE_ACCEL_IMAX
- # define THROTTLE_ACCEL_IMAX 500
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

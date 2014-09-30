@@ -34,21 +34,24 @@ public:
     };
 
     int gps_pipe(void);
+    int gps2_pipe(void);
     ssize_t gps_read(int fd, void *buf, size_t count);
     static uint16_t pwm_output[11];
     static uint16_t last_pwm_output[11];
     static uint16_t pwm_input[8];
-    static bool pwm_valid;
+    static bool new_rc_input;
     static void loop_hook(void);
     uint16_t base_port(void) const { return _base_port; }
 
-    // simulated airspeed
-    static uint16_t airspeed_pin_value;
-    static uint16_t voltage_pin_value;
-    static uint16_t current_pin_value;
+    // simulated airspeed, sonar and battery monitor
+    static uint16_t sonar_pin_value;    // pin 0
+    static uint16_t airspeed_pin_value; // pin 1
+    static uint16_t voltage_pin_value;  // pin 13
+    static uint16_t current_pin_value;  // pin 12
 
 private:
     void _parse_command_line(int argc, char * const argv[]);
+    void _set_param_default(char *parm);
     void _usage(void);
     void _sitl_setup(void);
     void _setup_fdm(void);
@@ -73,6 +76,8 @@ private:
     #define MAX_GPS_DELAY 100
     static gps_data _gps_data[MAX_GPS_DELAY];
 
+    static bool _gps_has_basestation_position;
+    static gps_data _gps_basestation_data;
     static void _gps_write(const uint8_t *p, uint16_t size);
     static void _gps_send_ubx(uint8_t msgid, uint8_t *buf, uint16_t size);
     static void _update_gps_ubx(const struct gps_data *d);
@@ -82,6 +87,8 @@ private:
     static uint16_t _gps_nmea_checksum(const char *s);
     static void _gps_nmea_printf(const char *fmt, ...);
     static void _update_gps_nmea(const struct gps_data *d);
+    static void _sbp_send_message(uint16_t msg_type, uint16_t sender_id, uint8_t len, uint8_t *payload);
+    static void _update_gps_sbp(const struct gps_data *d, bool sim_rtk);
 
     static void _update_gps(double latitude, double longitude, float altitude,
 			    double speedN, double speedE, double speedD, bool have_lock);
@@ -89,11 +96,12 @@ private:
     static void _update_ins(float roll, 	float pitch, 	float yaw,		// Relative to earth
 			    double rollRate, 	double pitchRate,double yawRate,	// Local to plane
 			    double xAccel, 	double yAccel, 	double zAccel,		// Local to plane
-			    float airspeed);
+			    float airspeed,	float altitude);
     static void _fdm_input(void);
     static void _simulator_output(void);
     static void _apply_servo_filter(float deltat);
     static uint16_t _airspeed_sensor(float airspeed);
+    static uint16_t _ground_sonar(float altitude);
     static float _gyro_drift(void);
     static float _rand_float(void);
     static Vector3f _rand_vec3f(void);
@@ -121,6 +129,7 @@ private:
     static SITL *_sitl;
     static uint16_t _rcout_port;
     static uint16_t _simin_port;
+    static float _current;
 };
 
 #endif // CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL

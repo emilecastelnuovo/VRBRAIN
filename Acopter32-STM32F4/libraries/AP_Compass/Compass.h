@@ -48,9 +48,6 @@
 #define COMPASS_MAX_INSTANCES 2
 #else
 #define COMPASS_MAX_INSTANCES 1
-# define COMPASS_EXPECTED_DEV_ID  0
-# define COMPASS_EXPECTED_DEV_ID2 0
-# define COMPASS_EXPECTED_DEV_ID3 0
 #endif
 
 class Compass

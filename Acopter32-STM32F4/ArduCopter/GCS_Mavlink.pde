@@ -199,8 +199,11 @@ static NOINLINE void send_extended_status1(mavlink_channel_t chan)
     if (ap.rc_receiver_present && !failsafe.radio) {
         control_sensors_health |= MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
     }
-    if (!ins.healthy()) {
-        control_sensors_health &= ~(MAV_SYS_STATUS_SENSOR_3D_GYRO | MAV_SYS_STATUS_SENSOR_3D_ACCEL);
+    if (!ins.get_gyro_health_all()) {
+        control_sensors_health &= ~MAV_SYS_STATUS_SENSOR_3D_GYRO;
+    }
+    if (!ins.get_accel_health_all()) {
+        control_sensors_health &= ~MAV_SYS_STATUS_SENSOR_3D_ACCEL;
     }
 
     if (!ahrs.healthy()) {
@@ -221,9 +224,10 @@ static NOINLINE void send_extended_status1(mavlink_channel_t chan)
     case AP_Terrain::TerrainStatusDisabled:
         break;
     case AP_Terrain::TerrainStatusUnhealthy:
-        control_sensors_present |= MAV_SYS_STATUS_TERRAIN;
-        control_sensors_enabled |= MAV_SYS_STATUS_TERRAIN;
-        break;
+        // To-Do: restore unhealthy terrain status reporting once terrain is used in copter
+        //control_sensors_present |= MAV_SYS_STATUS_TERRAIN;
+        //control_sensors_enabled |= MAV_SYS_STATUS_TERRAIN;
+        //break;
     case AP_Terrain::TerrainStatusOK:
         control_sensors_present |= MAV_SYS_STATUS_TERRAIN;
         control_sensors_enabled |= MAV_SYS_STATUS_TERRAIN;
@@ -276,8 +280,7 @@ static void NOINLINE send_location(mavlink_channel_t chan)
 
 static void NOINLINE send_nav_controller_output(mavlink_channel_t chan)
 {
-    Vector3f targets;
-    get_angle_targets_for_reporting(targets);
+    const Vector3f &targets = attitude_control.angle_ef_targets();
     mavlink_msg_nav_controller_output_send(
         chan,
         targets.x / 1.0e2f,
@@ -479,10 +482,14 @@ bool GCS_MAVLINK::try_send_message(enum ap_message id)
         break;
 
     case MSG_EXTENDED_STATUS1:
-        CHECK_PAYLOAD_SIZE(SYS_STATUS);
-        send_extended_status1(chan);
-        CHECK_PAYLOAD_SIZE(POWER_STATUS);
-        gcs[chan-MAVLINK_COMM_0].send_power_status();
+        // send extended status only once vehicle has been initialised
+        // to avoid unnecessary errors being reported to user
+        if (ap.initialised) {
+            CHECK_PAYLOAD_SIZE(SYS_STATUS);
+            send_extended_status1(chan);
+            CHECK_PAYLOAD_SIZE(POWER_STATUS);
+            gcs[chan-MAVLINK_COMM_0].send_power_status();
+        }
         break;
 
     case MSG_EXTENDED_STATUS2:
@@ -897,6 +904,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
 
     case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:         // MAV ID: 21
     {
+        // mark the firmware version in the tlog
+        send_text_P(SEVERITY_LOW, PSTR(FIRMWARE_STRING));
+
+#if defined(PX4_GIT_VERSION) && defined(NUTTX_GIT_VERSION)
+        send_text_P(SEVERITY_LOW, PSTR("PX4: " PX4_GIT_VERSION " NuttX: " NUTTX_GIT_VERSION));
+#endif
         handle_param_request_list(msg);
         break;
     }
@@ -1044,12 +1057,12 @@ void GCS_MAVLINK::handleMessage(mavlink_message_t* msg)
         case MAV_CMD_CONDITION_YAW:
             // param1 : target angle [0-360]
             // param2 : speed during change [deg per second]
-            // param3 : direction (not supported)
+            // param3 : direction (-1:ccw, +1:cw)
             // param4 : relative offset (1) or absolute angle (0)
             if ((packet.param1 >= 0.0f)   &&
             	(packet.param1 <= 360.0f) &&
             	((packet.param4 == 0) || (packet.param4 == 1))) {
-            	set_auto_yaw_look_at_heading(packet.param1, packet.param2, (uint8_t)packet.param4);
+            	set_auto_yaw_look_at_heading(packet.param1, packet.param2, (int8_t)packet.param3, (uint8_t)packet.param4);
                 result = MAV_RESULT_ACCEPTED;
             } else {
                 result = MAV_RESULT_FAILED;

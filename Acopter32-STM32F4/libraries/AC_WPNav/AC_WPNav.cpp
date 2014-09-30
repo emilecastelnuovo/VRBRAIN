@@ -176,6 +176,16 @@ void AC_WPNav::init_loiter_target()
     _pilot_accel_rgt_cms = 0;
 }
 
+/// loiter_soften_for_landing - reduce response for landing
+void AC_WPNav::loiter_soften_for_landing()
+{
+    const Vector3f& curr_pos = _inav.get_position();
+
+    // set target position to current position
+    _pos_control.set_xy_target(curr_pos.x, curr_pos.y);
+    _pos_control.freeze_ff_xy();
+}
+
 /// set_loiter_velocity - allows main code to pass the maximum velocity for loiter
 void AC_WPNav::set_loiter_velocity(float velocity_cms)
 {
@@ -695,7 +705,7 @@ void AC_WPNav::set_spline_origin_and_destination(const Vector3f& origin, const V
             // before beginning it's spline path to the next waypoint. Note: we are using the previous segment's origin and destination
             _spline_origin_vel = (_destination - _origin);
             _spline_time = 0.0f;	// To-Do: this should be set based on how much overrun there was from straight segment?
-            _spline_vel_scaler = 0.0f;    // To-Do: this should be set based on speed at end of prev straight segment?
+            _spline_vel_scaler = _pos_control.get_vel_target().length();    // start velocity target from current target velocity
         }else{
             // previous segment is splined, vehicle will fly through origin
             // we can use the previous segment's destination velocity as this segment's origin velocity
@@ -707,7 +717,7 @@ void AC_WPNav::set_spline_origin_and_destination(const Vector3f& origin, const V
             }else{
                 _spline_time = 0.0f;
             }
-            _spline_vel_scaler = 0.0f;
+            // Note: we leave _spline_vel_scaler as it was from end of previous segment
         }
     }
 

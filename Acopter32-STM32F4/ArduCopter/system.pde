@@ -288,12 +288,16 @@ static void init_ardupilot()
     // mid-flight, so set the serial ports non-blocking once we are
     // ready to fly
     hal.uartA->set_blocking_writes(false);
+    hal.uartB->set_blocking_writes(false);
     hal.uartC->set_blocking_writes(false);
     if (hal.uartD != NULL) {
         hal.uartD->set_blocking_writes(false);
     }
 
     cliSerial->print_P(PSTR("\nReady to FLY "));
+
+    // flag that initialisation has completed
+    ap.initialised = true;
 }
 
 
@@ -321,6 +325,7 @@ static void startup_ground(bool force_gyro_cal)
 
     // set landed flag
     set_land_complete(true);
+    set_land_complete_maybe(true);
 }
 
 // returns true if the GPS is ok and home position is set

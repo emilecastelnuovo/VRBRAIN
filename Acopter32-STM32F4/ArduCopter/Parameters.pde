@@ -295,6 +295,15 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Increment: 1
     GSCALAR(throttle_mid,        "THR_MID",    THR_MID_DEFAULT),
 
+    // @Param: THR_DZ
+    // @DisplayName: Throttle deadzone
+    // @Description: The deadzone above and below mid throttle.  Used in AltHold, Loiter, PosHold flight modes
+    // @User: Standard
+    // @Range: 0 300
+    // @Units: pwm
+    // @Increment: 1
+    GSCALAR(throttle_deadzone,  "THR_DZ",    THR_DZ_DEFAULT),
+
     // @Param: FLTMODE1
     // @DisplayName: Flight Mode 1
     // @Description: Flight mode when Channel 5 pwm is <= 1230
@@ -589,7 +598,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: ACRO_EXPO
     // @DisplayName: Acro Expo
     // @Description: Acro roll/pitch Expo to allow faster rotation when stick at edges
-    // @Values: 0:Disabled,0.2:Low,0.3:Medium,0.4:High
+    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
     // @User: Advanced
     GSCALAR(acro_expo,  "ACRO_EXPO",    ACRO_EXPO_DEFAULT),
 
@@ -799,7 +808,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Param: THR_ACCEL_IMAX
     // @DisplayName: Throttle acceleration controller I gain maximum
     // @Description: Throttle acceleration controller I gain maximum.  Constrains the maximum pwm that the I term will generate
-    // @Range: 0 500
+    // @Range: 0 1000
     // @Units: Percent*10
     // @User: Standard
 

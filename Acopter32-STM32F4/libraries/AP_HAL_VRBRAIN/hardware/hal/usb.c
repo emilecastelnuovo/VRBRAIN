@@ -27,8 +27,8 @@ typedef uint16_t U16;
 #define USBD_PID                        0x1145
 #define USBD_LANGID_STRING              0x409
 
-#define USB_RXFIFO_SIZE 256
-#define USB_TXFIFO_SIZE 256
+#define USB_RXFIFO_SIZE 512
+#define USB_TXFIFO_SIZE 512
 
 extern USB_OTG_CORE_HANDLE           USB_OTG_dev;
 extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);

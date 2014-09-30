@@ -132,6 +132,9 @@ static void init_arm_motors()
     // disable inertial nav errors temporarily
     inertial_nav.ignore_next_error();
 
+    // reset battery failsafe
+    set_failsafe_battery(false);
+
     // notify that arming will occur (we do this early to give plenty of warning)
     AP_Notify::flags.armed = true;
     // call update_notify a few times to ensure the message gets out
@@ -197,6 +200,9 @@ static void init_arm_motors()
     sprayer.test_pump(false);
 #endif
 
+    // short delay to allow reading of rc inputs
+    delay(30);
+
     // enable output to motors
     output_min();
 
@@ -247,7 +253,7 @@ static void pre_arm_checks(bool display_failure)
             return;
         }
         // check Baro & inav alt are within 1m
-        if(fabs(inertial_nav.get_altitude() - baro_alt) > 100) {
+        if(fabs(inertial_nav.get_altitude() - baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Alt disparity"));
             }
@@ -266,7 +272,7 @@ static void pre_arm_checks(bool display_failure)
         }
 
         // check compass learning is on or offsets have been set
-        if(!compass.learn_offsets_enabled() && !compass.configured()) {
+        if(!compass.configured()) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Compass not calibrated"));
             }
@@ -290,6 +296,27 @@ static void pre_arm_checks(bool display_failure)
             }
             return;
         }
+
+#if COMPASS_MAX_INSTANCES > 1
+        // check all compasses point in roughly same direction
+        if (compass.get_count() > 1) {
+            Vector3f prime_mag_vec = compass.get_field();
+            prime_mag_vec.normalize();
+            for(uint8_t i=0; i<compass.get_count(); i++) {
+                // get next compass
+                Vector3f mag_vec = compass.get_field(i);
+                mag_vec.normalize();
+                Vector3f vec_diff = mag_vec - prime_mag_vec;
+                if (vec_diff.length() > COMPASS_ACCEPTABLE_VECTOR_DIFF) {
+                    if (display_failure) {
+                        gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: compasses inconsistent"));
+                    }
+                    return;
+                }
+            }
+        }
+#endif
+
     }
 
     // check GPS
@@ -317,13 +344,55 @@ static void pre_arm_checks(bool display_failure)
             return;
         }
 
-        // check accels and gyros are healthy
-        if(!ins.healthy()) {
+        // check accels are healthy
+        if(!ins.get_accel_health_all()) {
             if (display_failure) {
-                gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: INS not healthy"));
+                gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Accels not healthy"));
             }
             return;
         }
+
+#if INS_MAX_INSTANCES > 1
+        // check all accelerometers point in roughly same direction
+        if (ins.get_accel_count() > 1) {
+            const Vector3f &prime_accel_vec = ins.get_accel();
+            for(uint8_t i=0; i<ins.get_accel_count(); i++) {
+                // get next accel vector
+                const Vector3f &accel_vec = ins.get_accel(i);
+                Vector3f vec_diff = accel_vec - prime_accel_vec;
+                if (vec_diff.length() > PREARM_MAX_ACCEL_VECTOR_DIFF) {
+                    if (display_failure) {
+                        gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Accels inconsistent"));
+                    }
+                    return;
+                }
+            }
+        }
+#endif
+
+        // check gyros are healthy
+        if(!ins.get_gyro_health_all()) {
+            if (display_failure) {
+                gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Gyros not healthy"));
+            }
+            return;
+        }
+
+#if INS_MAX_INSTANCES > 1
+        // check all gyros are consistent
+        if (ins.get_gyro_count() > 1) {
+            for(uint8_t i=0; i<ins.get_gyro_count(); i++) {
+                // get rotation rate difference between gyro #i and primary gyro
+                Vector3f vec_diff = ins.get_gyro(i) - ins.get_gyro();
+                if (vec_diff.length() > PREARM_MAX_GYRO_VECTOR_DIFF) {
+                    if (display_failure) {
+                        gcs_send_text_P(SEVERITY_HIGH,PSTR("PreArm: Gyros inconsistent"));
+                    }
+                    return;
+                }
+            }
+        }
+#endif
     }
 #if CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN
 #ifndef CONFIG_ARCH_BOARD_PX4FMU_V1
@@ -467,7 +536,7 @@ static bool arm_checks(bool display_failure)
 
     // check Baro & inav alt are within 1m
     if ((g.arming_check == ARMING_CHECK_ALL) || (g.arming_check & ARMING_CHECK_BARO)) {
-        if(fabs(inertial_nav.get_altitude() - baro_alt) > 100) {
+        if(fabs(inertial_nav.get_altitude() - baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
             if (display_failure) {
                 gcs_send_text_P(SEVERITY_HIGH,PSTR("Arm: Alt disparity"));
             }
@@ -546,6 +615,7 @@ static void init_disarm_motors()
 
     // we are not in the air
     set_land_complete(true);
+    set_land_complete_maybe(true);
 
     // reset the mission
     mission.reset();

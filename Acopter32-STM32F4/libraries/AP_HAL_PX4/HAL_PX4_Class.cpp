@@ -43,20 +43,34 @@ static PX4AnalogIn analogIn;
 static PX4Util utilInstance;
 static PX4GPIO gpioDriver;
 
+#if defined(CONFIG_ARCH_BOARD_PX4FMU_V2)
 #define UARTA_DEFAULT_DEVICE "/dev/ttyACM0"
 #define UARTB_DEFAULT_DEVICE "/dev/ttyS3"
 #define UARTC_DEFAULT_DEVICE "/dev/ttyS1"
+#define UARTD_DEFAULT_DEVICE "/dev/ttyS2"
+#define UARTE_DEFAULT_DEVICE "/dev/ttyS6"
+#else
+#define UARTA_DEFAULT_DEVICE "/dev/ttyACM0"
+#define UARTB_DEFAULT_DEVICE "/dev/ttyS3"
+#define UARTC_DEFAULT_DEVICE "/dev/ttyS2"
+#define UARTD_DEFAULT_DEVICE "/dev/null"
+#define UARTE_DEFAULT_DEVICE "/dev/null"
+#endif
 
 // 3 UART drivers, for GPS plus two mavlink-enabled devices
 static PX4UARTDriver uartADriver(UARTA_DEFAULT_DEVICE, "APM_uartA");
 static PX4UARTDriver uartBDriver(UARTB_DEFAULT_DEVICE, "APM_uartB");
 static PX4UARTDriver uartCDriver(UARTC_DEFAULT_DEVICE, "APM_uartC");
+static PX4UARTDriver uartDDriver(UARTD_DEFAULT_DEVICE, "APM_uartD");
+static PX4UARTDriver uartEDriver(UARTE_DEFAULT_DEVICE, "APM_uartE");
 
 HAL_PX4::HAL_PX4() :
     AP_HAL::HAL(
         &uartADriver,  /* uartA */
         &uartBDriver,  /* uartB */
         &uartCDriver,  /* uartC */
+        &uartDDriver,  /* uartD */
+        &uartEDriver,  /* uartE */
         &i2cDriver, /* i2c */
         &spiDeviceManager, /* spi */
         &analogIn, /* analogin */
@@ -72,14 +86,9 @@ HAL_PX4::HAL_PX4() :
 bool _px4_thread_should_exit = false;        /**< Daemon exit flag */
 static bool thread_running = false;        /**< Daemon status flag */
 static int daemon_task;                /**< Handle of daemon task / thread */
-static bool ran_overtime;
+bool px4_ran_overtime;
 
 extern const AP_HAL::HAL& hal;
-
-static void semaphore_yield(void *sem)
-{
-    sem_post((sem_t *)sem);
-}
 
 /*
   set the priority of the main APM task
@@ -100,7 +109,7 @@ static void set_priority(uint8_t priority)
 static void loop_overtime(void *)
 {
     set_priority(APM_OVERTIME_PRIORITY);
-    ran_overtime = true;
+    px4_ran_overtime = true;
 }
 
 static int main_loop(int argc, char **argv)
@@ -112,6 +121,8 @@ static int main_loop(int argc, char **argv)
     hal.uartA->begin(115200);
     hal.uartB->begin(38400);
     hal.uartC->begin(57600);
+    hal.uartD->begin(57600);
+    hal.uartE->begin(57600);
     hal.scheduler->init(NULL);
     hal.rcin->init(NULL);
     hal.rcout->init(NULL);
@@ -125,17 +136,15 @@ static int main_loop(int argc, char **argv)
      */
     set_priority(APM_STARTUP_PRIORITY);
 
+    schedulerInstance.hal_initialized();
+
     setup();
     hal.scheduler->system_initialized();
 
     perf_counter_t perf_loop = perf_alloc(PC_ELAPSED, "APM_loop");
     perf_counter_t perf_overrun = perf_alloc(PC_COUNT, "APM_overrun");
-    sem_t loop_semaphore;
-    struct hrt_call loop_call;
     struct hrt_call loop_overtime_call;
 
-    sem_init(&loop_semaphore, 0, 0);
-             
     thread_running = true;
 
     /*
@@ -156,32 +165,24 @@ static int main_loop(int argc, char **argv)
 
         loop();
 
-        if (ran_overtime) {
+        if (px4_ran_overtime) {
             /*
               we ran over 1s in loop(), and our priority was lowered
               to let a driver run. Set it back to high priority now.
              */
             set_priority(APM_MAIN_PRIORITY);
             perf_count(perf_overrun);
-            ran_overtime = false;
+            px4_ran_overtime = false;
         }
 
         perf_end(perf_loop);
 
-        if (hal.scheduler->in_timerprocess()) {
-            // we are running when a timer process is running! This is
-            // a scheduling error, and breaks the assumptions made in
-            // our locking system
-            ::printf("ERROR: timer processing running in loop()\n");
-        }
-
         /*
           give up 500 microseconds of time, to ensure drivers get a
-          chance to run. This gives us better timing performance than
-          a poll(NULL, 0, 1)
+          chance to run. This relies on the accurate semaphore wait
+          using hrt in semaphore.cpp
          */
-        hrt_call_after(&loop_call, 500, (hrt_callout)semaphore_yield, &loop_semaphore);
-        sem_wait(&loop_semaphore);
+        hal.scheduler->delay_microseconds(500);
     }
     thread_running = false;
     return 0;
@@ -193,6 +194,8 @@ static void usage(void)
     printf("Options:\n");
     printf("\t-d  DEVICE         set terminal device (default %s)\n", UARTA_DEFAULT_DEVICE);
     printf("\t-d2 DEVICE         set second terminal device (default %s)\n", UARTC_DEFAULT_DEVICE);
+    printf("\t-d3 DEVICE         set 3rd terminal device (default %s)\n", UARTD_DEFAULT_DEVICE);
+    printf("\t-d4 DEVICE         set 2nd GPS device (default %s)\n", UARTE_DEFAULT_DEVICE);
     printf("\n");
 }
 
@@ -202,6 +205,8 @@ void HAL_PX4::init(int argc, char * const argv[]) const
     int i;
     const char *deviceA = UARTA_DEFAULT_DEVICE;
     const char *deviceC = UARTC_DEFAULT_DEVICE;
+    const char *deviceD = UARTD_DEFAULT_DEVICE;
+    const char *deviceE = UARTE_DEFAULT_DEVICE;
 
     if (argc < 1) {
         printf("%s: missing command (try '%s start')", 
@@ -220,8 +225,10 @@ void HAL_PX4::init(int argc, char * const argv[]) const
 
             uartADriver.set_device_path(deviceA);
             uartCDriver.set_device_path(deviceC);
-            printf("Starting %s on %s and %s\n", 
-                   SKETCHNAME, deviceA, deviceC);
+            uartDDriver.set_device_path(deviceD);
+            uartEDriver.set_device_path(deviceE);
+            printf("Starting %s uartA=%s uartC=%s uartD=%s uartE=%s\n", 
+                   SKETCHNAME, deviceA, deviceC, deviceD, deviceE);
 
             _px4_thread_should_exit = false;
             daemon_task = task_spawn_cmd(SKETCHNAME,
@@ -266,6 +273,28 @@ void HAL_PX4::init(int argc, char * const argv[]) const
                 deviceC = strdup(argv[i+1]);
             } else {
                 printf("missing parameter to -d2 DEVICE\n");
+                usage();
+                exit(1);
+            }
+        }
+
+        if (strcmp(argv[i], "-d3") == 0) {
+            // set uartD terminal device
+            if (argc > i + 1) {
+                deviceD = strdup(argv[i+1]);
+            } else {
+                printf("missing parameter to -d3 DEVICE\n");
+                usage();
+                exit(1);
+            }
+        }
+
+        if (strcmp(argv[i], "-d4") == 0) {
+            // set uartE 2nd GPS device
+            if (argc > i + 1) {
+                deviceE = strdup(argv[i+1]);
+            } else {
+                printf("missing parameter to -d4 DEVICE\n");
                 usage();
                 exit(1);
             }
