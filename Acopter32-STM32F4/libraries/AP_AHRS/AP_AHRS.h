@@ -338,6 +338,9 @@ public:
     // is the AHRS subsystem healthy?
     virtual bool healthy(void) = 0;
 
+    // true if the AHRS has completed initialisation
+    virtual bool initialised(void) const { return true; };
+
 protected:
     AHRS_VehicleClass _vehicle_class;
 
