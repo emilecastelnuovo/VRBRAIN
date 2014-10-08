@@ -272,7 +272,13 @@ bool AP_InertialSensor_VRBRAIN::wait_for_sample(uint16_t timeout_ms)
     }
     uint32_t start = hal.scheduler->millis();
     while ((hal.scheduler->millis() - start) < timeout_ms) {
-        hal.scheduler->delay_microseconds(100);
+        uint64_t tnow = hal.scheduler->micros64();
+        // we spin for the last timing_lag microseconds. Before that
+        // we yield the CPU to allow IO to happen
+        const uint16_t timing_lag = 400;
+        if (_last_sample_timestamp + _sample_time_usec > tnow+timing_lag) {
+            hal.scheduler->delay_microseconds(_last_sample_timestamp + _sample_time_usec - (tnow+timing_lag));
+        }
         if (_sample_available()) {
             return true;
         }
