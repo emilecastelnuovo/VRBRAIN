@@ -16,7 +16,7 @@ volatile bool VRBRAINScheduler::_timer_event_missed = false;
 volatile bool VRBRAINScheduler::_in_timer_proc = false;
 AP_HAL::MemberProc VRBRAINScheduler::_timer_proc[VRBRAIN_SCHEDULER_MAX_TIMER_PROCS] = {NULL};
 uint8_t VRBRAINScheduler::_num_timer_procs = 0;
-uint32 VRBRAINScheduler::_scheduler_last_call = 0;
+uint64_t VRBRAINScheduler::_scheduler_last_call = 0;
 uint16_t VRBRAINScheduler::_scheduler_led = 0;
 
 VRBRAINScheduler::VRBRAINScheduler()
@@ -45,14 +45,14 @@ void VRBRAINScheduler::init(void* machtnichts)
 
 void VRBRAINScheduler::delay(uint16_t ms)
 {
-	uint32_t start = micros();
+   //"ERROR: delay() from timer process\n
+    if (in_timerprocess()) {
+        return;
+    }
     
-    while (ms > 0) {
-        while ((micros() - start) >= 1000) {
-            ms--;
-            if (ms == 0) break;
-            start += 1000;
-        }
+    uint64_t start = micros64();
+    while((micros64() - start)/1000 < ms) {
+	delay_microseconds(1000);
         if (_min_delay_cb_ms <= ms) {
             if (_delay_cb) {
                 _delay_cb();
@@ -62,21 +62,27 @@ void VRBRAINScheduler::delay(uint16_t ms)
 
 
 }
-
 uint32_t VRBRAINScheduler::millis() {
+    return millis64() & 0xffffffff;
+}
+uint64_t VRBRAINScheduler::millis64() {
     return systick_uptime();
 }
 
 uint32_t VRBRAINScheduler::micros() {
-    uint32 fms, lms;
-    uint32 cycle_cnt;
-    uint32 res;
+return micros64() & 0xffffffff;
+}
+
+uint64_t VRBRAINScheduler::micros64() {
+    uint64_t fms, lms;
+    uint32_t cycle_cnt;
+    uint64_t res;
     do {
         // make sure millis() return the same value before and after
         // getting the systick count
-        fms = millis();
+        fms = millis64();
         cycle_cnt = systick_get_count();
-        lms = millis();
+        lms = millis64();
     } while (lms != fms);
 
 #define US_PER_MS               1000
@@ -157,7 +163,7 @@ bool VRBRAINScheduler::in_timerprocess()
 
 void VRBRAINScheduler::_timer_isr_event() {
 
-    uint32 fms=systick_uptime();
+    uint64_t fms = systick_uptime();
 
     if(fms - _scheduler_last_call >= 100)
 	{

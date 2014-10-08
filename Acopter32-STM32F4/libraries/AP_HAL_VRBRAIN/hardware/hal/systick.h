@@ -8,7 +8,7 @@
 #endif
 
 /** System elapsed time, in milliseconds */
-extern volatile uint32_t systick_uptime_millis;
+extern volatile uint64_t systick_uptime_millis;
 
 extern volatile uint32_t uart1_lic_millis;
 extern volatile uint32_t uart2_lic_millis;
@@ -42,7 +42,7 @@ void systick_disable();
 /**
  * @brief Returns the system uptime, in milliseconds.
  */
-static inline uint32_t systick_uptime(void) {
+static inline uint64_t systick_uptime(void) {
     return systick_uptime_millis;
 }
 /**

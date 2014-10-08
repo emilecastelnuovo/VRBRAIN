@@ -18,6 +18,8 @@ public:
     void     delay(uint16_t ms);
     uint32_t millis();
     uint32_t micros();
+    uint64_t millis64();
+    uint64_t micros64();
     void     delay_microseconds(uint16_t us);
     void     register_delay_callback(AP_HAL::Proc,
                 uint16_t min_time_ms);
@@ -56,7 +58,7 @@ private:
     static volatile bool _timer_event_missed;
     static AP_HAL::MemberProc _timer_proc[VRBRAIN_SCHEDULER_MAX_TIMER_PROCS];
     static uint8_t _num_timer_procs;
-    static uint32 _scheduler_last_call;
+    static uint64_t _scheduler_last_call;
     static uint16_t _scheduler_led;
 
 };

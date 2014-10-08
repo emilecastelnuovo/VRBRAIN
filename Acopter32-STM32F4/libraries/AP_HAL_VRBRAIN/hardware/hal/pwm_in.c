@@ -194,7 +194,7 @@ static struct PWM_State
 	uint16_t fall;
 	uint16_t capture;
 	uint16_t error;
-	uint32_t last_pulse;
+	uint64_t last_pulse;
     } Inputs[8];
 
 static TIM_ICInitTypeDef TIM_ICInitStructure;

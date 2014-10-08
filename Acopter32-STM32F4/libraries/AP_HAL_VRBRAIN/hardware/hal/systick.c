@@ -3,7 +3,7 @@
 #include <timer.h>
 
 
-volatile uint32_t systick_uptime_millis;
+volatile uint64_t systick_uptime_millis;
 volatile uint32_t uart1_lic_millis;
 volatile uint32_t uart2_lic_millis;
 volatile uint32_t uart3_lic_millis;
