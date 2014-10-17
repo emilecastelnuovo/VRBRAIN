@@ -57,7 +57,7 @@ private:
 
     static const float          _gyro_scale;
 
-    uint32_t _last_sample_time_micros;
+    uint64_t _last_sample_time_micros;
 
     // ensure we can't initialise twice
     bool                        _initialised;

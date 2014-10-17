@@ -247,7 +247,7 @@ uint16_t AP_InertialSensor_VRBRAIN::_init_sensor( Sample_rate sample_rate )
     /* read the first lot of data.
      * _read_data_transaction requires the spi semaphore to be taken by
      * its caller. */
-    _last_sample_time_micros = hal.scheduler->micros();
+    _last_sample_time_micros = hal.scheduler->micros64();
     hal.scheduler->delay(10);
     if (_spi_sem->take(100)) {
         _read_data_transaction();
@@ -270,8 +270,8 @@ bool AP_InertialSensor_VRBRAIN::wait_for_sample(uint16_t timeout_ms)
     if (_sample_available()) {
         return true;
     }
-    uint32_t start = hal.scheduler->millis();
-    while ((hal.scheduler->millis() - start) < timeout_ms) {
+    uint64_t start = hal.scheduler->millis64();
+    while ((hal.scheduler->millis64() - start) < timeout_ms) {
         uint64_t tnow = hal.scheduler->micros64();
         // we spin for the last timing_lag microseconds. Before that
         // we yield the CPU to allow IO to happen
@@ -367,7 +367,7 @@ void AP_InertialSensor_VRBRAIN::_poll_data(void)
             return;
         }   
         if (_data_ready()) {
-            _last_sample_time_micros = hal.scheduler->micros();
+            _last_sample_time_micros = hal.scheduler->micros64();
             _read_data_transaction(); 
         }
         _spi_sem->give();
@@ -375,7 +375,7 @@ void AP_InertialSensor_VRBRAIN::_poll_data(void)
         /* Synchronous read - take semaphore */
         if (_spi_sem->take(10)) {
             if (_data_ready()) {
-                _last_sample_time_micros = hal.scheduler->micros();
+                _last_sample_time_micros = hal.scheduler->micros64();
                 _read_data_transaction(); 
             }
             _spi_sem->give();
@@ -606,7 +606,7 @@ float AP_InertialSensor_VRBRAIN::get_gyro_drift_rate(void)
 // return true if a sample is available
 bool AP_InertialSensor_VRBRAIN::_sample_available()
 {
-    uint64_t tnow = hal.scheduler->micros();
+    uint64_t tnow = hal.scheduler->micros64();
     while (tnow - _last_sample_timestamp > _sample_time_usec) {
         _have_sample_available = true;
         _last_sample_timestamp += _sample_time_usec;
