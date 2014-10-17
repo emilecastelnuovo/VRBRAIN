@@ -33,7 +33,7 @@ static void auto_spline_start(const Vector3f& destination, bool stopped_at_start
 static bool start_command(const AP_Mission::Mission_Command& cmd)
 {
     // To-Do: logging when new commands start/end
-    if (g.log_bitmask & MASK_LOG_CMD) {
+    if (should_log(MASK_LOG_CMD)) {
         Log_Write_Cmd(cmd);
     }
 
