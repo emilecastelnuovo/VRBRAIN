@@ -11,7 +11,7 @@
 //#define SECONDARY_DMP_ENABLED ENABLED             // allows running DMP in parallel with DCM for testing purposes
 
 //Autopilot rotate rate limits
-#define AUTO_YAW_SLEW_RATE 45
+//#define AUTO_YAW_SLEW_RATE 45
 
 /*-------------ENHANCED-----------------*/
 /*To enable the enhanced mode (MPU6000 at 1KHz and gyro full scale at 1000dps) uncomment #define ENHANCED in:
