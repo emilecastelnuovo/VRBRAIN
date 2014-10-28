@@ -33,7 +33,7 @@ static VRBRAINI2CDriver  i2cDriver(_I2C2,&i2cSemaphore);
 static VRBRAINI2CDriver  i2c2Driver(_I2C1,&i2c2Semaphore);
 static VRBRAINSPIDeviceManager spiDeviceManager;
 static VRBRAINAnalogIn analogIn;
-static VRBRAINStorage storageDriver(_I2C2);
+static VRBRAINStorage storageDriver(_I2C2,&i2cSemaphore);
 static VRBRAINGPIO gpioDriver;
 static VRBRAINRCInput rcinDriver;
 static VRBRAINRCOutput rcoutDriver;

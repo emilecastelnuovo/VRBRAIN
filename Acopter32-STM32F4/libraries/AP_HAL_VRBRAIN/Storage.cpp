@@ -20,12 +20,19 @@ void VRBRAINStorage::read_block(void* dst, uint16_t src, size_t n) {
 	uint8_t * buff = (uint8_t*)dst;
 	uint16_t numbytes = (uint16_t)n;
 
-	//sEE_WaitEepromStandbyState();
+
+	if (!_sem->take(1)) {
+	   return;
+	}
+
 
 	uint32_t ret = sEE_ReadBuffer(_dev, buff, src, &numbytes);
 
+	_sem->give();
+
 	if(ret == 1){
 	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	    return;
 	}
 
@@ -44,11 +51,19 @@ void VRBRAINStorage::write_block(uint16_t dst,const void* src, size_t n)
 {
 	uint8_t * buff = (uint8_t *)src;
 
-	//sEE_WaitEepromStandbyState();
+
+	if (!_sem->take(1)) {
+	   return;
+	}
+
 
 	uint32_t ret = sEE_WriteBuffer(_dev, buff,dst,(uint16_t)n);
+
+	_sem->give();
+
 	if(ret == 1){
-	    //hal.console->println_P("i2c timeout write block");
+	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	    return;
 	}
 }
