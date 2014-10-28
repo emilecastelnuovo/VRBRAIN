@@ -46,7 +46,7 @@ public:
 
     uint8_t lockup_count(){ return _lockup_count; }
 
-    AP_HAL::Semaphore* get_semaphore() { return _semaphore; }
+    AP_HAL::Semaphore* get_semaphore();
 
 private:
     i2c_dev *_dev;

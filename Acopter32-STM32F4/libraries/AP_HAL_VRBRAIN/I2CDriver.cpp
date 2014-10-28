@@ -27,6 +27,11 @@ VRBRAINI2CDriver::VRBRAINI2CDriver(i2c_dev *dev, AP_HAL::Semaphore* semaphore):
 	_lockup_count(0)
 {
 }
+
+AP_HAL::Semaphore* VRBRAINI2CDriver::get_semaphore() {
+    return _semaphore;
+}
+
 void VRBRAINI2CDriver::begin() {
 
     if(_dev->I2Cx == I2C1)
@@ -56,6 +61,7 @@ uint8_t VRBRAINI2CDriver::write(uint8_t addr, uint8_t len, uint8_t* tx_buffer)
 	if(ret == 1){
 	    _lockup_count ++;  //hal.console->printf_P(PSTR("Failed I2C write1: Event=0x%08X\n"),ret);
 	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	}
 
 	return ret;
@@ -75,6 +81,7 @@ uint8_t VRBRAINI2CDriver::writeRegister(uint8_t addr, uint8_t registerAddress, u
 	if(ret == 1){
 	     _lockup_count ++;
 	     hal.gpio->write(20, 1);
+	     i2c_bus_reset(_dev);
 	}
 
 	return ret;
@@ -92,6 +99,7 @@ uint8_t VRBRAINI2CDriver::read(uint8_t addr, uint8_t numberBytes, uint8_t* data)
 	if(ret == 1){
 	    _lockup_count ++; //hal.console->printf_P(PSTR("Failed I2C read1: Event=0x%08X\n"),ret);
 	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	}
 	return ret;
 }
@@ -108,6 +116,7 @@ uint8_t VRBRAINI2CDriver::readRegister(uint8_t addr, uint8_t reg, uint8_t* data)
 	if(ret == 1){
 	    _lockup_count ++; //hal.console->println_P("i2c timeout read register");
 	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	}
 
 	return ret;
@@ -126,6 +135,7 @@ uint8_t VRBRAINI2CDriver::readRegisters(uint8_t addr, uint8_t reg, uint8_t numbe
 	if(ret == 1){
 	    _lockup_count ++;
 	    hal.gpio->write(20, 1);
+	    i2c_bus_reset(_dev);
 	    return ret;
 	}
 
