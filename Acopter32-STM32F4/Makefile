@@ -103,7 +103,8 @@ GLOBAL_FLAGS    += -DAPM_BUILD_DIRECTORY=APM_BUILD_$(SKETCH)
 GLOBAL_CFLAGS   := $(cpu_flags)
 GLOBAL_CFLAGS   += -mthumb             #Generate code for the Thumb instruction set
 GLOBAL_CFLAGS   += -ggdb                  #Produce debugging information in the operating system’s native format
-#GLOBAL_CFLAGS   += -O0                 #Reduce compilation time and make debugging produce the expected results. This is the default
+GLOBAL_CFLAGS   += -g 
+GLOBAL_CFLAGS   += -O0                 #Reduce compilation time and make debugging produce the expected results. This is the default
 #GLOBAL_CFLAGS   += -nostdlib           #Do not use the standard system startup files or libraries when linking
 GLOBAL_CFLAGS   += -Wall               #This enables all the warnings about constructions that some users consider questionable, and that are easy to avoid (or modify to prevent the warning), even in conjunction with macros
 GLOBAL_CFLAGS   += -ffunction-sections
@@ -114,6 +115,8 @@ GLOBAL_CFLAGS   += $(GLOBAL_FLAGS)
 # GLOBAL_CXXFLAGS ---------------------------------------------------------------------------------
 #GLOBAL_CXXFLAGS := -fno-rtti       #Disable generation of information about every class with virtual functions for use by the C++ runtime type identification features
 #GLOBAL_CXXFLAGS += -fno-exceptions
+GLOBAL_CXXFLAGS += -g
+GLOBAL_CXXFLAGS += -O0
 GLOBAL_CXXFLAGS += -Wall
 GLOBAL_CXXFLAGS += -fpermissive    #Downgrade some diagnostics about nonconformant code from errors to warnings. Thus, using ‘-fpermissive’ will allow some nonconforming code to compile.
 GLOBAL_CXXFLAGS += -Wno-psabi
