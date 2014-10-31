@@ -44,7 +44,7 @@
    maximum number of compass instances available on this platform. If more
    than 1 then redundent sensors may be available
  */
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 #define COMPASS_MAX_INSTANCES 2
 #else
 #define COMPASS_MAX_INSTANCES 1

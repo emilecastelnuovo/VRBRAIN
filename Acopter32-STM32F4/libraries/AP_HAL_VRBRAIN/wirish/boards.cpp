@@ -38,6 +38,7 @@
 #include "timer.h"
 #include "adc.h"
 #include <usb.h>
+#include <stm32f4xx_dbgmcu.h>
 
 static void setupFlash(void);
 static void setupClocks(void);
@@ -49,6 +50,7 @@ static void usb_init(void);
 
 void init(void) {
     enableFPU();
+//    DBGMCU_Config(DBGMCU_SLEEP | DBGMCU_STANDBY | DBGMCU_STOP, ENABLE);
     setupFlash();
     setupClocks();
     setupNVIC();

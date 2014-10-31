@@ -7,6 +7,8 @@
   extern "C" {
 #endif
 
+void HardFault_Handler( void ) __attribute__( ( naked ) );
+
 /** System elapsed time, in milliseconds */
 extern volatile uint64_t systick_uptime_millis;
 
@@ -71,6 +73,8 @@ static inline uint32_t systick_check_underflow(void) {
  * To detach a callback, call this function again with a null argument.
  */
 void systick_attach_callback(void (*callback)(void));
+
+void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress );
 
 #ifdef __cplusplus
   }

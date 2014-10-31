@@ -32,6 +32,18 @@ private:
 
 public:
     AP_Compass_HMC5843_EXT() : Compass() {
+    _initialised=0;
+    _base_config=0;
+    _retry_time=0;
+    _i2c_sem=0;
+    _mag_x=0;
+    _mag_y=0;
+    _mag_z=0;
+    _mag_x_accum=0;
+    _mag_y_accum=0;
+    _mag_z_accum=0;
+    _accum_count=0;
+    _last_accum_time=0;
     }
     bool        init(void);
     bool        read(void);

@@ -25,7 +25,7 @@
 /*-------------EXTERNAL IMU-----------------*/
 /* To use External IMU connected to SPI3, uuncomment this line */
 //#define CONFIG_IMU_TYPE   CONFIG_IMU_MPU6000_EXT
-#define CONFIG_IMU_TYPE   CONFIG_IMU_VRBRAIN
+//#define CONFIG_IMU_TYPE   CONFIG_IMU_VRBRAIN
 /*-------------END EXTERNAL IMU-----------------*/
 
 /*------------EXTERNAL COMPASS----------------*/

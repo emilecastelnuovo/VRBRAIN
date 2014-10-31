@@ -29,8 +29,8 @@ static VRBRAINUARTDriver uartCDriver(_USART3,0);
 static VRBRAINUARTDriver uartDDriver(_USART6,0);
 static VRBRAINSemaphore  i2cSemaphore;
 static VRBRAINSemaphore  i2c2Semaphore;
-static VRBRAINI2CDriver  i2cDriver(_I2C2,&i2cSemaphore);
-static VRBRAINI2CDriver  i2c2Driver(_I2C1,&i2c2Semaphore);
+static VRBRAINI2CDriver  i2cDriver(_I2C2,&i2cSemaphore); //internal I2c
+static VRBRAINI2CDriver  i2c2Driver(_I2C1,&i2c2Semaphore); //external I2C
 static VRBRAINSPIDeviceManager spiDeviceManager;
 static VRBRAINAnalogIn analogIn;
 static VRBRAINStorage storageDriver(_I2C2,&i2cSemaphore);

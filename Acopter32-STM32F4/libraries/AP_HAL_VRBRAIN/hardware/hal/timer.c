@@ -217,7 +217,7 @@ void timer_foreach(void (*fn)(timer_dev*)) {
     //fn(TIMER4);
     //fn(TIMER5);
     //fn(TIMER6);
-    fn(TIMER7);
+    //fn(TIMER7);
     //fn(TIMER8);
 }
 

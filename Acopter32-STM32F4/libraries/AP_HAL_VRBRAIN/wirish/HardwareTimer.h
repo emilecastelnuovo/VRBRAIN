@@ -300,38 +300,38 @@ public:
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer1;
+//extern HardwareTimer Timer1;
 /**
  * @brief Deprecated.
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer2;
+//extern HardwareTimer Timer2;
 /**
  * @brief Deprecated.
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer3;
+//extern HardwareTimer Timer3;
 /**
  * @brief Deprecated.
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer4;
+//extern HardwareTimer Timer4;
 
 /**
  * @brief Deprecated.
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer5;
+//extern HardwareTimer Timer5;
 /**
  * @brief Deprecated.
  *
  * Pre-instantiated timer.
  */
-extern HardwareTimer Timer8;
+//extern HardwareTimer Timer8;
 
 
 #endif

@@ -7,7 +7,7 @@ BUILDDIRS       += $(BUILD_PATH)/$(d)
 LIBRARY_INCLUDES += -I$(d)/common -I$(d)/include
 
 # Local flags
-CFLAGS_$(d) = -Wall -Werror
+CFLAGS_$(d) =  
 
 # Local rules and targets
 cSRCS_$(d)   := 
