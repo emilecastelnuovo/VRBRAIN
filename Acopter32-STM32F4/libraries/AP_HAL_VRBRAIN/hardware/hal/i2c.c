@@ -1420,6 +1420,12 @@ uint32_t sEE_TIMEOUT_UserCallback(void)
  * @param dev I2C device
  */
 void i2c_bus_reset(const i2c_dev *dev) {
+
+    //unsigned clock_count;
+    //unsigned stretch_count;
+
+    i2c_deinit(dev);
+
     /* Release both lines */
     i2c_master_release_bus(dev);
 
@@ -1450,6 +1456,8 @@ void i2c_bus_reset(const i2c_dev *dev) {
     gpio_write_bit(dev->gpio_port, dev->scl_pin, 1);
     delay_us(10);
     gpio_write_bit(dev->gpio_port, dev->sda_pin, 1);
+
+    i2c_init(dev, 0, I2C_400KHz_SPEED);
 }
 
 void i2c_master_release_bus(const i2c_dev *dev) {
