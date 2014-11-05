@@ -185,6 +185,9 @@ AP_Compass_VRBRAIN::init()
 	return true;
     }
 
+    //Clear Yellow error LED
+    hal.gpio->write(20,0);
+
     _i2c = hal.i2c;
 
     if(_init()) {
