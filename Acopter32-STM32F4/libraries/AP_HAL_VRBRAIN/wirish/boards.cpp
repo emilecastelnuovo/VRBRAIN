@@ -74,13 +74,13 @@ void usb_init(void){
     usb_open();
 
     usb_default_attr(&usb_attr);
-	usb_attr.preempt_prio = 3;
+	usb_attr.preempt_prio = 0;
 	usb_attr.sub_prio = 0;
 	usb_attr.use_present_pin = 1;
 	usb_attr.present_port = _GPIOD;
 	usb_attr.present_pin = 4;
-	//usb_attr.manufacturer = "VirtualRobotix";
-	//usb_attr.description = "VRBRAIN 4.0";
+	usb_attr.manufacturer = (char*)"Laser Navigation";
+	usb_attr.description = (char*)"VRBRAIN v4.5";
 
     usb_ioctl(I_USB_SETATTR, &usb_attr);
 	

@@ -30,7 +30,9 @@ void VRBRAINScheduler::init(void* machtnichts)
 {
 
     uint32_t period = (2000000UL / 1000) - 1; // 1000 Hz = 1KHz
-    uint32_t prescaler =  (uint16_t) ((SystemCoreClock /2) / 2000000) - 1; //2MHz 0.5us ticks
+    uint32_t prescaler =  (uint16_t) ((SystemCoreClock /2) / 2000000UL) - 1; //2MHz 0.5us ticks
+
+    delay(1000);
 
     timer_init(TIMER7);
     timer_pause(TIMER7);

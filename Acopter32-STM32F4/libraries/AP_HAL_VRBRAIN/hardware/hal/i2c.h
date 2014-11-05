@@ -13,7 +13,7 @@
    You may modify these timeout values depending on CPU frequency and application
    conditions (interrupts routines ...). */   
 
-#define I2C_TIMEOUT         ((uint32_t)0x100)
+#define I2C_TIMEOUT         ((uint32_t)0x1000)
 #define I2C_LONG_TIMEOUT    ((uint32_t)(10 * I2C_TIMEOUT))
 
 
@@ -38,7 +38,7 @@
    not remain stuck if the I2C communication is corrupted.
    You may modify these timeout values depending on CPU frequency and application
    conditions (interrupts routines ...). */
-#define sEE_FLAG_TIMEOUT         ((uint32_t)0x100)
+#define sEE_FLAG_TIMEOUT         ((uint32_t)0x1000)
 #define sEE_LONG_TIMEOUT         ((uint32_t)(10 * sEE_FLAG_TIMEOUT))
 
 /* Maximum number of trials for sEE_WaitEepromStandbyState() function */
@@ -154,8 +154,8 @@ uint32_t sEE_WritePage(i2c_dev *dev, uint8_t* pBuffer, uint16_t WriteAddr, uint8
 uint32_t sEE_WriteBuffer(i2c_dev *dev, uint8_t* pBuffer, uint16_t WriteAddr, uint16_t NumByteToWrite);
 uint32_t sEE_WaitEepromStandbyState(i2c_dev *dev);
 
-void i2c_master_release_bus(const i2c_dev *dev);
-void i2c_bus_reset(const i2c_dev *dev);
+void i2c_master_release_bus(i2c_dev *dev);
+void i2c_bus_reset(i2c_dev *dev);
 /* USER Callbacks: These are functions for which prototypes only are declared in
    EEPROM driver and that should be implemented into user applicaiton. */
 /* sEE_TIMEOUT_UserCallback() function is called whenever a timeout condition

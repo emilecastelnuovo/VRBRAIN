@@ -66,21 +66,60 @@ HAL_VRBRAIN::HAL_VRBRAIN() :
 extern const AP_HAL::HAL& hal;
 
 /*Returns true if an external mag on I2C2 port has been detected*/
-static void detect_compass(void){
-
-    AP_Compass_HMC5843_EXT compass_ext;
-    AP_Compass_HMC5843 compass;
+static void detect_compass(void)
+    {
 
     hal.scheduler->delay(1000);
 
-    if(compass_ext.init()){
-	hal.console->printf_P(PSTR("External Compass found!"));
-	g_ext_mag_detect = 1;
-	return;
-    }
-    if(compass.init()){
-	hal.console->printf_P(PSTR("Internal Compass found!"));
+    AP_HAL::Semaphore* _i2c_sem;
+    uint8_t _base_config;
+    //Try external.
+
+    _i2c_sem = hal.i2c2->get_semaphore();
+    if (!_i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
+	{
+	hal.console->println("Failed to get HMC5843 semaphore");
+	}
+
+    // determine if we are using 5843 or 5883L
+    _base_config = 0;
+    if (hal.i2c2->writeRegister((uint8_t) 0x3C, 0x00,
+	    0x03 << 5 | 0x06 << 2 | 0x10)
+	    || hal.i2c2->readRegister((uint8_t) 0x3C, 0x00, &_base_config))
+	{
 	g_ext_mag_detect = 0;
+	_i2c_sem->give();
+	}
+    if (_base_config != 0)
+	{
+	g_ext_mag_detect = 1;
+	hal.console->println("Compass TYPE EXT");
+	_i2c_sem->give();
+	return;
+	}
+
+
+    _i2c_sem = hal.i2c->get_semaphore();
+    if (!_i2c_sem->take(HAL_SEMAPHORE_BLOCK_FOREVER))
+	{
+	hal.console->println("Failed to get HMC5843 semaphore");
+	}
+
+    // determine if we are using 5843 or 5883L
+    _base_config = 0;
+    if (hal.i2c->writeRegister((uint8_t) 0x3C, 0x00,
+	    0x03 << 5 | 0x06 << 2 | 0x10)
+	    || hal.i2c->readRegister((uint8_t) 0x3C, 0x00, &_base_config))
+	{
+	g_ext_mag_detect = 0;
+	_i2c_sem->give();
+	return;
+	}
+    if (_base_config != 0)
+	{
+	g_ext_mag_detect = 0;
+	hal.console->println("Compass TYPE INT");
+	_i2c_sem->give();
 	return;
 	}
 
