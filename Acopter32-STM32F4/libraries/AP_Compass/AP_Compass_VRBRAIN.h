@@ -23,13 +23,13 @@ private:
     AP_HAL::Semaphore*  _i2c_sem;
     AP_HAL::I2CDriver* 	_i2c;
 
-    int16_t			    _mag_x;
-    int16_t			    _mag_y;
-    int16_t			    _mag_z;
+    int16_t		_mag_x;
+    int16_t		_mag_y;
+    int16_t		_mag_z;
     int16_t             _mag_x_accum;
     int16_t             _mag_y_accum;
     int16_t             _mag_z_accum;
-    uint8_t			    _accum_count;
+    uint8_t		_accum_count;
     uint32_t            _last_accum_time;
 
 public:

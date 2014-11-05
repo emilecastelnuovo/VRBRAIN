@@ -29,21 +29,24 @@ VRBRAINScheduler::VRBRAINScheduler()
 void VRBRAINScheduler::init(void* machtnichts)
 {
 
-    uint32_t period = (2000000UL / 1000) - 1; // 1000 Hz = 1KHz
-    uint32_t prescaler =  (uint16_t) ((SystemCoreClock /2) / 2000000UL) - 1; //2MHz 0.5us ticks
-
-    delay(1000);
+    uint16_t period = (2000000UL / 1000) - 1; // 1000 Hz = 1KHz
+    uint16_t prescaler =  (uint16_t) ((SystemCoreClock /2) / 2000000UL) - 1; //2MHz 0.5us ticks
 
     timer_init(TIMER7);
+    delay(10);
     timer_pause(TIMER7);
+    delay(10);
     timer_set_prescaler(TIMER7,prescaler);
+    delay(10);
     timer_set_count(TIMER7,0);
+    delay(10);
     timer_set_reload(TIMER7,period);
+    delay(10);
+
     timer_attach_interrupt(TIMER7, TIMER_UPDATE_INTERRUPT, _timer_isr_event);
     NVIC_SetPriority(TIM7_IRQn,5);
     timer_resume(TIMER7);
 
-    //systick_attach_callback(_timer_isr_event);
 }
 
 void VRBRAINScheduler::delay(uint16_t ms)
@@ -159,30 +162,9 @@ bool VRBRAINScheduler::in_timerprocess()
     return _in_timer_proc;
 }
 
-#define LED_GRN (*((unsigned long int *) 0x424102B4))
-#define LED_YLW (*((unsigned long int *) 0x424102B8))
-#define LED_RED (*((unsigned long int *) 0x424102BC))
-
 
 void VRBRAINScheduler::_timer_isr_event() {
 
-    uint64_t fms = systick_uptime();
-/*
-    if(fms - _scheduler_last_call >= 100)
-	{
-	 if (_scheduler_led == 1)
-	     {
-	     LED_YLW=0;
-	     _scheduler_led=0;
-	     }
-	     else
-	     {
-             LED_YLW=1;
-             _scheduler_led=1;
-	     }
-	 _scheduler_last_call = fms;
-	}
-*/
     _run_timer_procs(true);
 }
 

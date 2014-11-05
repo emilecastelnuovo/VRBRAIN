@@ -44,6 +44,7 @@ public:
      */
     struct MultiCopter {
         AP_Int16 angle_max;
+        AP_Int16 num_motors;
     };
 };
 

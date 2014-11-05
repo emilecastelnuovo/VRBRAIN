@@ -185,7 +185,6 @@ AP_Compass_VRBRAIN::init()
 	return true;
     }
 
-
     _i2c = hal.i2c;
 
     if(_init()) {
@@ -193,8 +192,7 @@ AP_Compass_VRBRAIN::init()
 	return true;
     }
 
-
-
+    //NO COMPASS FOUND
     return false;
 
 }

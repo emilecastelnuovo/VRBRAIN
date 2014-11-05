@@ -50,7 +50,7 @@ static void usb_init(void);
 
 void init(void) {
     enableFPU();
-//    DBGMCU_Config(DBGMCU_SLEEP | DBGMCU_STANDBY | DBGMCU_STOP, ENABLE);
+    DBGMCU_Config(DBGMCU_SLEEP | DBGMCU_STANDBY | DBGMCU_STOP, ENABLE);
     setupFlash();
     setupClocks();
     setupNVIC();

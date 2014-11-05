@@ -151,16 +151,6 @@ static bool start_command(const AP_Mission::Mission_Command& cmd)
         break;
 #endif
 
-#if MOUNT == ENABLED
-    case MAV_CMD_DO_MOUNT_CONFIGURE:                    // Mission command to configure a camera mount |Mount operation mode (see MAV_CONFIGURE_MOUNT_MODE enum)| stabilize roll? (1 = yes, 0 = no)| stabilize pitch? (1 = yes, 0 = no)| stabilize yaw? (1 = yes, 0 = no)| Empty| Empty| Empty|
-        camera_mount.configure_cmd();
-        break;
-
-    case MAV_CMD_DO_MOUNT_CONTROL:                      // Mission command to control a camera mount |pitch(deg*100) or lat, depending on mount mode.| roll(deg*100) or lon depending on mount mode| yaw(deg*100) or alt (in cm) depending on mount mode| Empty| Empty| Empty| Empty|
-        camera_mount.control_cmd();
-        break;
-#endif
-
 #if PARACHUTE == ENABLED
     case MAV_CMD_DO_PARACHUTE:                          // Mission command to configure or release parachute
         do_parachute(cmd);
@@ -914,7 +904,7 @@ static void do_take_picture()
 {
 #if CAMERA == ENABLED
     camera.trigger_pic();
-    if (g.log_bitmask & MASK_LOG_CAMERA) {
+    if (should_log(MASK_LOG_CAMERA)) {
         DataFlash.Log_Write_Camera(ahrs, gps, current_loc);
     }
 #endif

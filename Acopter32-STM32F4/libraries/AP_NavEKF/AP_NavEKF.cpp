@@ -102,6 +102,9 @@ extern const AP_HAL::HAL& hal;
 // assume 3m/s to start
 #define STARTUP_WIND_SPEED 3.0f
 
+// initial gyro bias uncertainty (deg/sec)
+#define INIT_GYRO_BIAS_UNCERTAINTY 0.1f
+
 // Define tuning parameters
 const AP_Param::GroupInfo NavEKF::var_info[] PROGMEM = {
 
@@ -699,23 +702,6 @@ void NavEKF::SelectVelPosFusion()
             fusePosData = false;
         }
 
-        // check for and read new height data
-        readHgtData();
-
-        // command fusion of height data
-        if (newDataHgt)
-        {
-            // reset data arrived flag
-            newDataHgt = false;
-            // reset state updates and counter used to spread fusion updates across several frames to reduce 10Hz pulsing
-            memset(&hgtIncrStateDelta[0], 0, sizeof(hgtIncrStateDelta));
-            hgtUpdateCount = 0;
-            // enable fusion
-            fuseHgtData = true;
-        } else {
-            fuseHgtData = false;
-        }
-
     } else {
         // in static mode use synthetic position measurements set to zero
         // only fuse synthetic measurements when rate of change of velocity is less than 0.5g to reduce attitude errors due to launch acceleration
@@ -726,7 +712,23 @@ void NavEKF::SelectVelPosFusion()
             fusePosData = false;
         }
         fuseVelData = false;
+    }
+
+    // check for and read new height data
+    readHgtData();
+
+    // command fusion of height data
+    if (newDataHgt)
+    {
+        // reset data arrived flag
+        newDataHgt = false;
+        // reset state updates and counter used to spread fusion updates across several frames to reduce 10Hz pulsing
+        memset(&hgtIncrStateDelta[0], 0, sizeof(hgtIncrStateDelta));
+        hgtUpdateCount = 0;
+        // enable fusion
         fuseHgtData = true;
+    } else {
+        fuseHgtData = false;
     }
 
     // perform fusion
@@ -2811,6 +2813,18 @@ void NavEKF::getGyroBias(Vector3f &gyroBias) const
     gyroBias = state.gyro_bias / dtIMU;
 }
 
+// reset the body axis gyro bias states to zero and re-initialise the corresponding covariances
+void NavEKF::resetGyroBias(void)
+{
+    state.gyro_bias.zero();
+    zeroRows(P,10,12);
+    zeroCols(P,10,12);
+    P[10][10] = sq(radians(INIT_GYRO_BIAS_UNCERTAINTY * dtIMU));
+    P[11][11] = P[10][10];
+    P[12][12] = P[10][10];
+
+}
+
 // return weighting of first IMU in blending function and the individual Z-accel bias estimates in m/s^2
 void NavEKF::getAccelBias(Vector3f &accelBias) const
 {
@@ -2927,7 +2941,7 @@ void NavEKF::CovarianceInit()
     P[8][8]   = P[7][7];
     P[9][9]   = sq(5.0f);
     // delta angle biases
-    P[10][10] = sq(radians(0.1f * dtIMU));
+    P[10][10] = sq(radians(INIT_GYRO_BIAS_UNCERTAINTY * dtIMU));
     P[11][11] = P[10][10];
     P[12][12] = P[10][10];
     // Z delta velocity bias
