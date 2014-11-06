@@ -4,6 +4,7 @@
 
 # Select SKETCH (rover, plane, copter)
 APM_SKETCH:= copter
+FRAME?=quad
 
 AP_HAL:= AP_HAL_VRBRAIN
 
@@ -16,7 +17,7 @@ AP_HAL:= AP_HAL_VRBRAIN
 # these default to a Maple Flash build.
 BOARD            ?= laserlab_MP32V1F4
 MEMORY_TARGET    ?= flash
-
+BOARDNAME		 ?= VRBRAIN_4.x_
 ##
 ## Useful paths, constants, etc.
 ##
@@ -125,7 +126,6 @@ GLOBAL_CXXFLAGS += $(GLOBAL_FLAGS)
 GLOBAL_ASFLAGS  := $(cpu_flags)
 GLOBAL_ASFLAGS  += -mthumb
 GLOBAL_CFLAGS   += -ggdb                 #Produce debugging information in the operating system’s native format
-#GLOBAL_CFLAGS   += -O0                #Reduce compilation time and make debugging produce the expected results. This is the default
 GLOBAL_ASFLAGS  += -x assembler-with-cpp
 GLOBAL_ASFLAGS  += $(GLOBAL_FLAGS)
 # GLOBAL_LDFLAGS ----------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ LDFLAGS         += -static
 LDFLAGS         += -Wall
 LDFLAGS         += -Wl,--gc-sections
 LDFLAGS         += -Wl,--cref
-LDFLAGS         += -Wl,-Map,$(BUILD_PATH)/$(BOARD).map
+LDFLAGS         += -Wl,-Map,$(BUILD_PATH)/$(BOARDNAME)$(FRAME).map
 #LDFLAGS         += -Xlinker --gc-sections --print-gc-sections
 LDFLAGS         += -T$(LDDIR)/$(LDSCRIPT)
 LDFLAGS         += -L$(LDDIR)
@@ -231,6 +231,7 @@ $(foreach m,$(LIBRARY_MODULES),$(eval $(call LIBRARY_MODULE_template,$(m))))
 ## Targets
 ##
 
+
 # main target
 include $(SRCROOT)/build-targets.mk
 
@@ -243,8 +244,14 @@ ifneq ($(PREV_BUILD_TYPE), $(MEMORY_TARGET))
     $(shell rm -rf $(BUILD_PATH))
 endif
 
+# cope with copter and hil targets
+FRAMES = quad tri hexa y6 octa octa-quad heli single
+BOARDS = vrbrain
+
+GLOBAL_FLAGS += "-DFRAME_CONFIG=$(shell echo $(FRAME) | tr a-z A-Z | sed s/-/_/g)_FRAME "
+
 all: build-check cleansketch \
-     $(SKETCHCPP) $(BUILD_PATH)/$(BOARD).bin \
+     $(SKETCHCPP) $(BUILD_PATH)/$(BOARDNAME)$(FRAME).bin \
      $(PRODUCT_BUNDLE)
 
 cleansketch:
@@ -253,6 +260,8 @@ cleansketch:
 
 clean:	cleansketch
 	rm -rf build
+
+
 
 AWK := awk
 CAT := cat

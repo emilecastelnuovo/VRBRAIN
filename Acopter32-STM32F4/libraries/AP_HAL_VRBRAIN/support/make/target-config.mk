@@ -46,8 +46,8 @@ ifeq ($(MEMORY_TARGET), jtag)
 endif
 
 IMAGE_DIR        = $(SUPPORT_PATH)/templates
-PRODUCT_BUNDLE   = $(BUILD_PATH)/laserlab_MP32V1F4.vrx
-PRODUCT_BIN      = $(BUILD_PATH)/laserlab_MP32V1F4.bin
+PRODUCT_BUNDLE   = $(BUILD_PATH)/$(BOARDNAME)$(FRAME).vrx
+PRODUCT_BIN      = $(BUILD_PATH)/$(BOARDNAME)$(FRAME).bin
 
 export MKFW      = $(SUPPORT_PATH)/scripts/px_mkfw.py
 
