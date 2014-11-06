@@ -23,6 +23,8 @@ public:
 
   void set_blocking_writes(bool blocking);
 
+  void set_device(uint8_t port);
+
   bool tx_pending();
 
 

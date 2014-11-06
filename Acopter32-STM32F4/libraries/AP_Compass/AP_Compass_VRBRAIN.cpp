@@ -178,12 +178,12 @@ bool
 AP_Compass_VRBRAIN::init()
 {
 
-    _i2c = hal.i2c2;
+	_i2c = hal.i2c2;
 
-    if(_init()) {
-	_external = true;
-	return true;
-    }
+	if(_init()) {
+	    _external = true;
+	    return true;
+	}
 
     //Clear Yellow error LED
     hal.gpio->write(20,0);
@@ -191,7 +191,8 @@ AP_Compass_VRBRAIN::init()
     _i2c = hal.i2c;
 
     if(_init()) {
-	_external = false;
+	if(!_external.load())
+	    _external = false;
 	return true;
     }
 

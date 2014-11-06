@@ -68,10 +68,11 @@ const AP_Param::GroupInfo AP_GPS::var_info[] PROGMEM = {
 };
 
 /// Startup initialisation.
-void AP_GPS::init(DataFlash_Class *dataflash)
+void AP_GPS::init(DataFlash_Class *dataflash, AP_HAL::UARTDriver *port)
 {
     _DataFlash = dataflash;
-    hal.uartB->begin(38400UL, 256, 16);
+    _port = port;
+    _port->begin(38400UL, 256, 16);
 #if GPS_MAX_INSTANCES > 1
     primary_instance = 0;
     if (hal.uartE != NULL) {
@@ -105,7 +106,7 @@ void AP_GPS::send_blob_update(uint8_t instance)
 {
     // see if we can write some more of the initialisation blob
     if (initblob_state[instance].remaining > 0) {
-        AP_HAL::UARTDriver *port = instance==0?hal.uartB:hal.uartE;
+        AP_HAL::UARTDriver *port = instance==0?_port:hal.uartE;
         int16_t space = port->txspace();
         if (space > (int16_t)initblob_state[instance].remaining) {
             space = initblob_state[instance].remaining;
@@ -128,7 +129,7 @@ void
 AP_GPS::detect_instance(uint8_t instance)
 {
     AP_GPS_Backend *new_gps = NULL;
-    AP_HAL::UARTDriver *port = instance==0?hal.uartB:hal.uartE;
+    AP_HAL::UARTDriver *port = instance==0?_port:hal.uartE;
     struct detect_state *dstate = &detect_state[instance];
 
     if (port == NULL) {

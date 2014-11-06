@@ -133,6 +133,14 @@ static void init_ardupilot()
 
     bool enable_external_leds = true;
 
+    if(g.gps_port == 1) {
+	hal.uartB->set_device(1);
+	hal.uartC->set_device(2);
+    } else if (g.gps_port == 2) {
+	hal.uartB->set_device(2);
+	hal.uartC->set_device(1);
+    }
+
     // init EPM cargo gripper
 #if EPM_ENABLED == ENABLED
     epm.init();
@@ -215,7 +223,7 @@ static void init_ardupilot()
  #endif // CONFIG_ADC
 
     // Do GPS init
-    gps.init(&DataFlash);
+    gps.init(&DataFlash, hal.uartB);
 
     if(g.compass_enabled)
         init_compass();

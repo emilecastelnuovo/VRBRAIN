@@ -307,6 +307,11 @@
  # define GPS_HDOP_GOOD_DEFAULT         200     // minimum hdop that represents a good position.  used during pre-arm checks if fence is enabled
 #endif
 
+// GPS port
+#ifndef GPS_PORT_DEFAULT
+ # define GPS_PORT_DEFAULT       1    // port 1 internal port, port2 external port.
+#endif
+
 // GCS failsafe
 #ifndef FS_GCS
  # define FS_GCS                        DISABLED

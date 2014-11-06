@@ -156,6 +156,13 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Advanced
     GSCALAR(gps_hdop_good, "GPS_HDOP_GOOD", GPS_HDOP_GOOD_DEFAULT),
 
+    // @Param: GPS_PORT
+    // @DisplayName: GPS Port Number
+    // @Description: GPS port.1 Internal board port, 2 External rail port.
+    // @Range: 1 2
+    // @User: Advanced
+    GSCALAR(gps_port, "GPS_PORT", GPS_PORT_DEFAULT),
+
     // @Param: MAG_ENABLE
     // @DisplayName: Compass enable/disable
     // @Description: Setting this to Enabled(1) will enable the compass. Setting this to Disabled(0) will disable the compass

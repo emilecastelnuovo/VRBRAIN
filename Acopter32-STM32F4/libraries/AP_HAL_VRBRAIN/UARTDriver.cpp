@@ -39,6 +39,14 @@ VRBRAINUARTDriver::VRBRAINUARTDriver(struct usart_dev *usart, uint8_t use_usb):
 {
 }
 
+void VRBRAINUARTDriver::set_device(uint8_t port) {
+    if(port == 1){
+	_usart_device = _USART2;
+    } else if (port == 2) {
+	_usart_device = _USART3;
+    }
+}
+
 void VRBRAINUARTDriver::begin(uint32_t baud) {
     begin(baud,0);
 }

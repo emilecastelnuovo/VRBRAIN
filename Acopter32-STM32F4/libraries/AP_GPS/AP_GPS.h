@@ -66,7 +66,7 @@ public:
     }
 
     /// Startup initialisation.
-    void init(DataFlash_Class *dataflash);
+    void init(DataFlash_Class *dataflash,AP_HAL::UARTDriver *port);
 
     /// Update GPS state based on possible bytes received from the module.
     /// This routine must be called periodically (typically at 10Hz or
@@ -334,6 +334,9 @@ private:
 
     // which ports are locked
     uint8_t locked_ports:2;
+
+    //uart port
+    AP_HAL::UARTDriver *_port;
 
     // state of auto-detection process, per instance
     struct detect_state {
