@@ -88,7 +88,7 @@ bool AP_Compass_VRBRAIN::read_raw()
 
     if (_i2c->readRegisters(COMPASS_ADDRESS, 0x03, 6, buff) != 0) {
         if (_healthy[0]) {
-			hal.i2c->setHighSpeed(false);
+			_i2c->setHighSpeed(false);
         }
         _healthy[0] = false;
         _i2c_sem->give();
@@ -177,13 +177,12 @@ bool AP_Compass_VRBRAIN::re_initialise()
 bool
 AP_Compass_VRBRAIN::init()
 {
+    _i2c = hal.i2c2;
 
-	_i2c = hal.i2c2;
-
-	if(_init()) {
-	    _external = true;
-	    return true;
-	}
+    if(_init()) {
+	_external.set(true);
+	return true;
+    }
 
     //Clear Yellow error LED
     hal.gpio->write(20,0);
@@ -361,7 +360,7 @@ bool AP_Compass_VRBRAIN::read()
         }
         if (!re_initialise()) {
             _retry_time = hal.scheduler->millis() + 1000;
-			hal.i2c->setHighSpeed(false);
+			_i2c->setHighSpeed(false);
             return false;
         }
     }
@@ -371,7 +370,7 @@ bool AP_Compass_VRBRAIN::read()
 	   if (!_healthy[0] || _accum_count == 0) {
 		  // try again in 1 second, and set I2c clock speed slower
 		  _retry_time = hal.scheduler->millis() + 1000;
-		  hal.i2c->setHighSpeed(false);
+		  _i2c->setHighSpeed(false);
 		  return false;
 	   }
 	}
