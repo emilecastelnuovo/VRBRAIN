@@ -19,12 +19,12 @@ typedef uint16_t U16;
 
 #define USBD_MANUFACTURER_STRING        "Laser Navigation"
 #define USBD_PRODUCT_FS_STRING          "VRBRAIN v4.5"
-#define USBD_SERIALNUMBER_FS_STRING     "00000000050C"
+#define USBD_SERIALNUMBER_FS_STRING     "0"
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
 
 #define USBD_VID                        0x27AC
-#define USBD_PID                        0x1145
+#define USBD_PID                        0x1140
 #define USBD_LANGID_STRING              0x409
 
 #define USB_RXFIFO_SIZE 512
@@ -117,7 +117,7 @@ __ALIGN_BEGIN U8 USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
     USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
     0x00,                       /*bcdUSB */
     0x02,
-    0x00,                       /*bDeviceClass*/
+    0x02,                       /*bDeviceClass*/
     0x00,                       /*bDeviceSubClass*/
     0x00,                       /*bDeviceProtocol*/
     USB_OTG_MAX_EP0_SIZE,      /*bMaxPacketSize*/
@@ -125,8 +125,8 @@ __ALIGN_BEGIN U8 USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
     HIBYTE(USBD_VID),           /*idVendor*/
     LOBYTE(USBD_PID),           /*idVendor*/
     HIBYTE(USBD_PID),           /*idVendor*/
-    0x00,                       /*bcdDevice rel. 2.00*/
-    0x02,
+    0x01,                       /*bcdDevice rel. 2.00*/
+    0x01,
     USBD_IDX_MFC_STR,           /*Index of manufacturer  string*/
     USBD_IDX_PRODUCT_STR,       /*Index of product string*/
     USBD_IDX_SERIAL_STR,        /*Index of serial number string*/
