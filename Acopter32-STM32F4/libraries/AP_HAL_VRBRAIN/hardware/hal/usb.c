@@ -13,13 +13,9 @@
 
 //#define USB_DEBUG
 
-typedef uint8_t U8;
-typedef uint32_t U32;
-typedef uint16_t U16;
-
 #define USBD_MANUFACTURER_STRING        "Laser Navigation"
-#define USBD_PRODUCT_FS_STRING          "VRBRAIN v4.5"
-#define USBD_SERIALNUMBER_FS_STRING     "0"
+#define USBD_PRODUCT_FS_STRING          "VRBrain         "
+#define USBD_SERIALNUMBER_FS_STRING     "0000000000000000"
 #define USBD_CONFIGURATION_FS_STRING    "VCP Config"
 #define USBD_INTERFACE_FS_STRING        "VCP Interface"
 
@@ -36,10 +32,10 @@ extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
 static usb_attr_t *usb_attr;
-static U8 usb_connected;
+static uint8_t usb_connected;
 
-static const U16 rxfifo_size = USB_RXFIFO_SIZE;
-static const U16 txfifo_size = USB_TXFIFO_SIZE;
+static const uint16_t rxfifo_size = USB_RXFIFO_SIZE;
+static const uint16_t txfifo_size = USB_TXFIFO_SIZE;
 
 static ring_buffer _rxfifo;
 static ring_buffer _txfifo;
@@ -50,8 +46,8 @@ static ring_buffer *txfifo = &_txfifo;                /* Rx FIFO */
 static uint8_t rx_buf[USB_RXFIFO_SIZE];
 static uint8_t tx_buf[USB_TXFIFO_SIZE];
 
-static U8 preempt_prio, sub_prio;
-static U8 usb_ready;
+static uint8_t preempt_prio, sub_prio;
+static uint8_t usb_ready;
 
 LINE_CODING linecoding =
   {
@@ -63,19 +59,19 @@ LINE_CODING linecoding =
 	
 /* These are external variables imported from CDC core to be used for IN 
    transfer management. */
-extern U8  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
+extern uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
                                 These data will be sent over USB IN endpoint
                                 in the CDC core functions. */
-extern U32 APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
+extern uint32_t APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
                                 start address when writing received data
                                 in the buffer APP_Rx_Buffer. */
 
 /* Private function prototypes -----------------------------------------------*/
-static U16 VCP_Init     (void);
-static U16 VCP_DeInit   (void);
-static U16 VCP_Ctrl     (uint32_t Cmd, uint8_t* Buf, uint32_t Len);
-static U16 VCP_DataTx   (uint8_t* Buf, uint32_t Len);
-static U16 VCP_DataRx   (uint8_t* Buf, uint32_t Len);
+static uint16_t VCP_Init     (void);
+static uint16_t VCP_DeInit   (void);
+static uint16_t VCP_Ctrl     (uint32_t Cmd, uint8_t* Buf, uint32_t Len);
+static uint16_t VCP_DataTx   (uint8_t* Buf, uint32_t Len);
+static uint16_t VCP_DataRx   (uint8_t* Buf, uint32_t Len);
 
 CDC_IF_Prop_TypeDef VCP_fops = 
 {
@@ -111,7 +107,7 @@ USBD_DEVICE USR_desc =
 };
 
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN U8 USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
+__ALIGN_BEGIN uint8_t USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
   {
     0x12,                       /*bLength */
     USB_DEVICE_DESCRIPTOR_TYPE, /*bDescriptorType*/
@@ -134,7 +130,7 @@ __ALIGN_BEGIN U8 USBD_DeviceDesc[USB_SIZ_DEVICE_DESC] __ALIGN_END =
   } ; /* USB_DeviceDescriptor */
 
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN U8 USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
+__ALIGN_BEGIN uint8_t USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
 {
   USB_LEN_DEV_QUALIFIER_DESC,
   USB_DESC_TYPE_DEVICE_QUALIFIER,
@@ -149,7 +145,7 @@ __ALIGN_BEGIN U8 USBD_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_EN
 };
 
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN U8 USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
+__ALIGN_BEGIN uint8_t USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 {
      USB_SIZ_STRING_LANGID,         
      USB_DESC_TYPE_STRING,       
@@ -159,14 +155,14 @@ __ALIGN_BEGIN U8 USBD_LangIDDesc[USB_SIZ_STRING_LANGID] __ALIGN_END =
 
 
 /* Return the device descriptor */
-U8 * USBD_USR_DeviceDescriptor(U8 speed, U16 *length)
+uint8_t * USBD_USR_DeviceDescriptor(uint8_t speed, uint16_t *length)
 {
   *length = sizeof(USBD_DeviceDesc);
   return USBD_DeviceDesc;
 }
 
 /* return the LangID string descriptor */
-U8 * USBD_USR_LangIDStrDescriptor(U8 speed, U16 *length)
+uint8_t * USBD_USR_LangIDStrDescriptor(uint8_t speed, uint16_t *length)
 {
   *length =  sizeof(USBD_LangIDDesc);  
   return USBD_LangIDDesc;
@@ -175,15 +171,15 @@ U8 * USBD_USR_LangIDStrDescriptor(U8 speed, U16 *length)
 
 
 /* return the product string descriptor */
-U8 * USBD_USR_ProductStrDescriptor(U8 speed, U16 *length)
+uint8_t * USBD_USR_ProductStrDescriptor(uint8_t speed, uint16_t *length)
 {
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "desc\n");
 #endif
 	if (usb_attr && usb_attr->description)
-		USBD_GetString ((U8 *)usb_attr->description, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)usb_attr->description, USBD_StrDesc, length);
 	else
-		USBD_GetString ((U8 *)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "desc ok\n");
 #endif
@@ -192,15 +188,15 @@ return USBD_StrDesc;
 }
 
 /* return the manufacturer string descriptor */
-U8 * USBD_USR_ManufacturerStrDescriptor(U8 speed, U16 *length)
+uint8_t * USBD_USR_ManufacturerStrDescriptor(uint8_t speed, uint16_t *length)
 {
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "manu\n");
 #endif
 	if (usb_attr && usb_attr->manufacturer)
-		USBD_GetString ((U8 *)usb_attr->manufacturer, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)usb_attr->manufacturer, USBD_StrDesc, length);
 	else
-		USBD_GetString ((U8 *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "manu ok\n");
 #endif
@@ -208,15 +204,16 @@ return USBD_StrDesc;
 }
 
 /* return the serial number string descriptor */
-U8 *  USBD_USR_SerialStrDescriptor(U8 speed, U16 *length)
+uint8_t *  USBD_USR_SerialStrDescriptor(uint8_t speed, uint16_t *length)
 {
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "serial\n");
 #endif
+
 	if (usb_attr && usb_attr->serial_number)
-		USBD_GetString ((U8 *)usb_attr->serial_number, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)usb_attr->serial_number, USBD_StrDesc, length);
 	else
-		USBD_GetString ((U8 *)USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "serial ok\n");
 #endif
@@ -224,15 +221,15 @@ return USBD_StrDesc;
 }
 
 /* return the configuration string descriptor */
-U8 * USBD_USR_ConfigStrDescriptor(U8 speed , U16 *length)
+uint8_t * USBD_USR_ConfigStrDescriptor(uint8_t speed , uint16_t *length)
 {
 #ifdef USB_DEBUG
     usart_putstr(_USART1, "configuration\n");
 #endif
     if (usb_attr && usb_attr->configuration)
-		USBD_GetString ((U8 *)usb_attr->configuration, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)usb_attr->configuration, USBD_StrDesc, length);
 	else	
-		USBD_GetString ((U8 *)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length); 
+		USBD_GetString ((uint8_t *)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
 #ifdef USB_DEBUG
     usart_putstr(_USART1, "configuration ok\n");
 #endif
@@ -241,15 +238,15 @@ U8 * USBD_USR_ConfigStrDescriptor(U8 speed , U16 *length)
 
 
 /* return the interface string descriptor */
-U8 * USBD_USR_InterfaceStrDescriptor( U8 speed , U16 *length)
+uint8_t * USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "interface\n");
 #endif
 	if (usb_attr && usb_attr->interface)
-		USBD_GetString ((U8 *)usb_attr->interface, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)usb_attr->interface, USBD_StrDesc, length);
 	else	
-		USBD_GetString ((U8 *)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
+		USBD_GetString ((uint8_t *)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
 #ifdef USB_DEBUG
 	usart_putstr(_USART1, "interface ok\n");
 #endif
@@ -491,7 +488,7 @@ void USB_OTG_BSP_EnableInterrupt(USB_OTG_CORE_HANDLE *pdev)
  * @param  None
  * @retval Result of the opeartion (USBD_OK in all cases)
  */
-static U16 VCP_Init(void)
+static uint16_t VCP_Init(void)
 {
 	rb_init(rxfifo, rxfifo_size, rx_buf);
 	rb_init(txfifo, txfifo_size, tx_buf);
@@ -503,7 +500,7 @@ static U16 VCP_Init(void)
  * @param  None
  * @retval Result of the opeartion (USBD_OK in all cases)
  */
-static U16 VCP_DeInit(void)
+static uint16_t VCP_DeInit(void)
 {
 	return USBD_OK;
 }
@@ -516,7 +513,7 @@ static U16 VCP_DeInit(void)
  * @param  Len: Number of data to be sent (in bytes)
  * @retval Result of the opeartion (USBD_OK in all cases)
  */
-static U16 VCP_Ctrl (U32 Cmd, U8 *Buf, U32 Len)
+static uint16_t VCP_Ctrl (uint32_t Cmd, uint8_t *Buf, uint32_t Len)
 { 
   switch (Cmd)
   {
@@ -576,9 +573,9 @@ static U16 VCP_Ctrl (U32 Cmd, U8 *Buf, U32 Len)
  * @param  Len: Number of data to be sent (in bytes)
  * @retval Result of the opeartion: USBD_OK if all operations are OK else VCP_FAIL
  */
-U16 VCP_DataTx(U8 *buffer, U32 nbytes)
+uint16_t VCP_DataTx(uint8_t *buffer, uint32_t nbytes)
 {
-	U32 sent = 0;
+	uint32_t sent = 0;
 
 	while(sent < nbytes)
 	{	
@@ -609,11 +606,11 @@ U16 VCP_DataTx(U8 *buffer, U32 nbytes)
  * @param  Len: Number of data received (in bytes)
  * @retval Result of the opeartion: USBD_OK if all operations are OK else VCP_FAIL
   */
-static U16 VCP_DataRx(U8 *buffer, U32 nbytes)
+static uint16_t VCP_DataRx(uint8_t *buffer, uint32_t nbytes)
 {
 	if (!rxfifo) return 0;
-	U32 sent = 0;
-	U32 tosend = nbytes;
+	uint32_t sent = 0;
+	uint32_t tosend = nbytes;
 	while(tosend)
 	{
 		if (rb_is_full(rxfifo))
@@ -688,7 +685,7 @@ int usb_ioctl(int request, void *ctl)
 			rb_reset(rxfifo);
 			return 1;
 		case I_USB_CONNECTED:
-			*((U8 *)ctl) = is_usb_connected(usb_attr);
+			*((uint8_t *)ctl) = is_usb_connected(usb_attr);
 			break;
 		case I_USB_GETATTR:
 			if (usb_attr)
@@ -718,9 +715,9 @@ int usb_ioctl(int request, void *ctl)
 
 int usb_write(uint8_t *buf, unsigned int nbytes)
 {
-    U16 tosend = nbytes;
-	U16 sent = 0;
-	U8 *buffer8 = (U8 *)buf;
+    uint16_t tosend = nbytes;
+	uint16_t sent = 0;
+	uint8_t *buffer8 = (uint8_t *)buf;
 	int bytesput;
 	
 	if (usb_ready == 0)
@@ -752,9 +749,9 @@ int usb_write(uint8_t *buf, unsigned int nbytes)
 
 int usb_read(void  * buf, unsigned int nbytes)
 {
-	U16 toread = nbytes;
-	U16 received;
-	U8 *buffer8 = (U8 *)buf;
+	uint16_t toread = nbytes;
+	uint16_t received;
+	uint8_t *buffer8 = (uint8_t *)buf;
 
 	if (usb_ready == 0)
 	{
@@ -813,6 +810,7 @@ uint16_t usb_tx_pending(void)
 {
     return rb_full_count(txfifo);
 }
+
 /*----------------------------------------------------------------------------
  * end of file
  *---------------------------------------------------------------------------*/

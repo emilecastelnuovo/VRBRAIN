@@ -17,6 +17,9 @@
 #define DP_PIN_PORT   		_GPIOA  //PA12
 #define DP_PIN_PIN   		12  //PA12
 
+#define U_ID_0 (*(uint32_t*) 0x1FFF7A10)
+#define U_ID_1 (*(uint32_t*) 0x1FFF7A14)
+#define U_ID_2 (*(uint32_t*) 0x1FFF7A18)
 
 /* Exported typef ------------------------------------------------------------*/
 /* The following structures groups all needed parameters to be configured for the 
