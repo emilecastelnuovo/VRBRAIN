@@ -71,7 +71,6 @@ void usb_init(void){
 
     usb_attr_t usb_attr;
 
-
     usb_open();
 
     usb_default_attr(&usb_attr);
@@ -85,6 +84,7 @@ void usb_init(void){
 
     usb_ioctl(I_USB_SETATTR, &usb_attr);
     //usb_ioctl(I_USB_CONNECTED, &usb_connected);
+
 }
 
 void enableFPU(void){
@@ -92,16 +92,7 @@ void enableFPU(void){
 	SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));	// set CP10 and CP11 Full Access
 #endif
 }
-/* You could farm this out to the files in boards/ if e.g. it takes
- * too long to test on Maple Native (all those FSMC pins...). */
-//bool boardUsesPin(uint8 pin) {
-//    for (int i = 0; i < BOARD_NR_USED_PINS; i++) {
-//        if (pin == boardUsedPins[i]) {
-//            return true;
-//        }
-//    }
-//    return false;
-//}
+
 
 static void setupFlash(void) {
 
