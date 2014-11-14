@@ -3,13 +3,13 @@ sp              := $(sp).x
 dirstack_$(sp)  := $(d)
 d               := $(dir)
 BUILDDIRS       += $(BUILD_PATH)/$(d)
-BUILDDIRS       += $(BUILD_PATH)/$(d)/comm
+#BUILDDIRS       += $(BUILD_PATH)/$(d)/comm
 BUILDDIRS       += $(BUILD_PATH)/$(d)/boards/$(BOARD)
 
 LIBRARY_INCLUDES += -I$(d)/comm -I$(d)/boards/$(BOARD)
 
 # Local flags
-CFLAGS_$(d) := -Wall -Werror
+#CFLAGS_$(d) := -Wall -Werror
 
 # Local rules and targets
 cSRCS_$(d)   :=  
