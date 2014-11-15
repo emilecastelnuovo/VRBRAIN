@@ -14,10 +14,10 @@
 //#define USB_DEBUG
 
 #define USBD_MANUFACTURER_STRING        "Laser Navigation"
-#define USBD_PRODUCT_FS_STRING          "VRBrain         "
+#define USBD_PRODUCT_FS_STRING          "VRBrain"
 #define USBD_SERIALNUMBER_FS_STRING     "0000000000000000"
-#define USBD_CONFIGURATION_FS_STRING    "VCP Config"
-#define USBD_INTERFACE_FS_STRING        "VCP Interface"
+#define USBD_CONFIGURATION_FS_STRING    "VDC"
+#define USBD_INTERFACE_FS_STRING        "ICD"
 
 #define USBD_VID                        0x27AC
 #define USBD_PID                        0x1140
@@ -173,66 +173,28 @@ uint8_t * USBD_USR_LangIDStrDescriptor(uint8_t speed, uint16_t *length)
 /* return the product string descriptor */
 uint8_t * USBD_USR_ProductStrDescriptor(uint8_t speed, uint16_t *length)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "desc\n");
-#endif
-	if (usb_attr && usb_attr->description)
-		USBD_GetString ((uint8_t *)usb_attr->description, USBD_StrDesc, length);
-	else
-		USBD_GetString ((uint8_t *)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "desc ok\n");
-#endif
-
-return USBD_StrDesc;
+    USBD_GetString ((uint8_t *)USBD_PRODUCT_FS_STRING, USBD_StrDesc, length);
+    return USBD_StrDesc;
 }
 
 /* return the manufacturer string descriptor */
 uint8_t * USBD_USR_ManufacturerStrDescriptor(uint8_t speed, uint16_t *length)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "manu\n");
-#endif
-	if (usb_attr && usb_attr->manufacturer)
-		USBD_GetString ((uint8_t *)usb_attr->manufacturer, USBD_StrDesc, length);
-	else
-		USBD_GetString ((uint8_t *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "manu ok\n");
-#endif
-return USBD_StrDesc;
+    USBD_GetString ((uint8_t *)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
+    return USBD_StrDesc;
 }
 
 /* return the serial number string descriptor */
 uint8_t *  USBD_USR_SerialStrDescriptor(uint8_t speed, uint16_t *length)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "serial\n");
-#endif
-
-	if (usb_attr && usb_attr->serial_number)
-		USBD_GetString ((uint8_t *)usb_attr->serial_number, USBD_StrDesc, length);
-	else
-		USBD_GetString ((uint8_t *)USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "serial ok\n");
-#endif
-return USBD_StrDesc;
+    USBD_GetString ((uint8_t *)USBD_SERIALNUMBER_FS_STRING, USBD_StrDesc, length);
+    return USBD_StrDesc;
 }
 
 /* return the configuration string descriptor */
 uint8_t * USBD_USR_ConfigStrDescriptor(uint8_t speed , uint16_t *length)
 {
-#ifdef USB_DEBUG
-    usart_putstr(_USART1, "configuration\n");
-#endif
-    if (usb_attr && usb_attr->configuration)
-		USBD_GetString ((uint8_t *)usb_attr->configuration, USBD_StrDesc, length);
-	else	
-		USBD_GetString ((uint8_t *)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
-#ifdef USB_DEBUG
-    usart_putstr(_USART1, "configuration ok\n");
-#endif
+    USBD_GetString ((uint8_t *)USBD_CONFIGURATION_FS_STRING, USBD_StrDesc, length);
     return USBD_StrDesc;
 }
 
@@ -240,24 +202,12 @@ uint8_t * USBD_USR_ConfigStrDescriptor(uint8_t speed , uint16_t *length)
 /* return the interface string descriptor */
 uint8_t * USBD_USR_InterfaceStrDescriptor( uint8_t speed , uint16_t *length)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "interface\n");
-#endif
-	if (usb_attr && usb_attr->interface)
-		USBD_GetString ((uint8_t *)usb_attr->interface, USBD_StrDesc, length);
-	else	
-		USBD_GetString ((uint8_t *)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "interface ok\n");
-#endif
-return USBD_StrDesc;
+    USBD_GetString ((uint8_t *)USBD_INTERFACE_FS_STRING, USBD_StrDesc, length);
+    return USBD_StrDesc;
 }
 
 void USBD_USR_Init(void)
 {  
-#ifdef USB_DEBUG
-    usart_putstr(_USART1, "USBD_USR_Init(void)\n");
-#endif
     usb_connected = 0;
 }
 
@@ -272,24 +222,15 @@ void USBD_USR_DeviceReset(uint8_t speed )
 		 default:
 			 break;
 	 }
-#ifdef USB_DEBUG
-	 usart_putstr(_USART1, "USBD_USR_DeviceReset\n");
-#endif
 }
 
 void USBD_USR_DeviceConfigured (void)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "USBD_USR_DeviceConfigured\n");
-#endif
 	usb_connected = 1;
 }
 
 void USBD_USR_DeviceSuspended(void)
 {
-#ifdef USB_DEBUG
-	usart_putstr(_USART1, "USBD_USR_DeviceSuspended\n");
-#endif
 	usb_connected = 0;
 }
 
