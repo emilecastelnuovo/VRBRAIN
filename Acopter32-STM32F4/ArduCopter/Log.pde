@@ -489,9 +489,9 @@ static void Log_Write_Attitude()
     DataFlash.WriteBlock(&pkt, sizeof(pkt));
 
 #if AP_AHRS_NAVEKF_AVAILABLE
-    if(ahrs.get_ekf_use()) {
-    DataFlash.Log_Write_EKF(ahrs);
-    DataFlash.Log_Write_AHRS2(ahrs);
+    if(ahrs.get_ekf_use() && g.ekf_log_enable) {
+	DataFlash.Log_Write_EKF(ahrs);
+	DataFlash.Log_Write_AHRS2(ahrs);
     }
 #endif
 #if CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL

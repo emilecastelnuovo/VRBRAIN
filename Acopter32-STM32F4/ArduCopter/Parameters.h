@@ -181,7 +181,7 @@ public:
         k_param_gcs2,
         k_param_serial2_baud_old, // deprecated
         k_param_serial2_protocol,
-
+	k_param_ekf_log_enable,
         //
         // 140: Sensor parameters
         //
@@ -331,6 +331,7 @@ public:
     AP_Int16        serial2_baud;
     AP_Int8         serial2_protocol;
 #endif
+    AP_Int8         ekf_log_enable;
     AP_Int8         telem_delay;
 
     AP_Int16        rtl_altitude;

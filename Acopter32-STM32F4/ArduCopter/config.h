@@ -312,6 +312,10 @@
  # define GPS_PORT_DEFAULT       1    // port 1 internal port, port2 external port.
 #endif
 
+#ifndef EKF_LOG_ENABLE_DEFAULT
+#define EKF_LOG_ENABLE_DEFAULT 	0
+#endif
+
 // GCS failsafe
 #ifndef FS_GCS
  # define FS_GCS                        DISABLED

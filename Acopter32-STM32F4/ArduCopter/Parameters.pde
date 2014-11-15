@@ -86,6 +86,14 @@ const AP_Param::Info var_info[] PROGMEM = {
 
 #endif // MAVLINK_COMM_NUM_BUFFERS
 
+    // @Param: EKF_LOG_ENABLE
+    // @DisplayName: Whether to log or not EKF messages to dataflash
+    // @Description: This parameter enables or disables EKF logging to dataflash to reduce log size.
+    // @Range: 0 - 1
+    // @Increment: 1
+    // @User: advanced
+    GSCALAR(ekf_log_enable,	"EKF_LOG_ENABLE", EKF_LOG_ENABLE_DEFAULT),
+
     // @Param: TELEM_DELAY
     // @DisplayName: Telemetry startup delay
     // @Description: The amount of time (in seconds) to delay radio telemetry to prevent an Xbee bricking on power up
