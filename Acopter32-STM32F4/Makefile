@@ -17,7 +17,7 @@ AP_HAL:= AP_HAL_VRBRAIN
 # these default to a Maple Flash build.
 BOARD            ?= laserlab_MP32V1F4
 MEMORY_TARGET    ?= flash
-BOARDNAME		 ?= VRBRAIN_4.x_
+BOARDNAME		 ?= VRBRAIN_3.2_
 ##
 ## Useful paths, constants, etc.
 ##

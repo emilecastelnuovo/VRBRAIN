@@ -1,11 +1,11 @@
 {
-    "board_id": 1145, 
-    "magic": "VRBRAINv45", 
+    "board_id": 1140, 
+    "magic": "VRBRAINv4.0", 
     "description": "Firmware for the VRBRAIN board", 
     "image": "", 
     "build_time": 0, 
     "summary": "VRBRAIN",
-    "version": "4.5",
+    "version": "4.0",
     "image_size": 0,
     "git_identity": "",
     "board_revision": 0
