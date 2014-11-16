@@ -3,8 +3,7 @@
 .DEFAULT_GOAL := all
 
 # Select SKETCH (rover, plane, copter)
-APM_SKETCH:= copter
-FRAME?=quad
+APM_SKETCH ?= copter
 
 AP_HAL:= AP_HAL_VRBRAIN
 
@@ -17,7 +16,7 @@ AP_HAL:= AP_HAL_VRBRAIN
 # these default to a Maple Flash build.
 BOARD            ?= laserlab_MP32V1F4
 MEMORY_TARGET    ?= flash
-BOARDNAME		 ?= VRBRAIN_3.2_
+
 ##
 ## Useful paths, constants, etc.
 ##
@@ -51,17 +50,25 @@ LIBRARIES_PATH   := $(SRCROOT)/libraries
 ifeq ($(APM_SKETCH),plane)
 	FIRMWARE_PATH    := $(SRCROOT)/ArduPlane
 	SKETCH           := ArduPlane
+	BOARDNAME		 ?= ArduPlane-vrbrain-v40
+	FRAME?=
 endif
 
 ifeq ($(APM_SKETCH),rover)
 	FIRMWARE_PATH    := $(SRCROOT)/APMRover2
 	SKETCH           := APMRover2
+	BOARDNAME		 ?= APMRover2-vrbrain-v40
+	FRAME?=
 endif
 
 ifeq ($(APM_SKETCH),copter)
 	FIRMWARE_PATH    := $(SRCROOT)/ArduCopter
 	SKETCH           := ArduCopter
+	BOARDNAME		 ?= ArduCopter-vrbrain-v40-
+	FRAME?=quad
 endif
+
+
 
 SKETCHPDESRCS   := $(wildcard $(FIRMWARE_PATH)/*.pde)
 SKETCHSRCS      := $(wildcard $(addprefix $(SRCROOT)/,$(SRCSUFFIXES)))
