@@ -89,6 +89,15 @@ static void init_ardupilot()
 
     BoardConfig.init();
 
+    if(g.gps_port == 1) {
+	hal.uartB->set_device(1);
+	hal.uartC->set_device(2);
+    } else if (g.gps_port == 2) {
+	hal.uartB->set_device(2);
+	hal.uartC->set_device(1);
+    }
+
+
     // allow servo set on all channels except first 4
     ServoRelayEvents.set_channel_mask(0xFFF0);
 
@@ -104,8 +113,8 @@ static void init_ardupilot()
     // init baro before we start the GCS, so that the CLI baro test works
     barometer.init();
 
-    // initialise sonar
-    init_sonar();
+    // initialise rangefinder
+    init_rangefinder();
 
     // initialise battery monitoring
     battery.init();
@@ -170,7 +179,7 @@ static void init_ardupilot()
     ahrs.set_airspeed(&airspeed);
 
     // GPS Initialization
-    gps.init(&DataFlash);
+    gps.init(&DataFlash, hal.uartB);
 
     //mavlink_system.sysid = MAV_SYSTEM_ID;				// Using g.sysid_this_mav
     mavlink_system.compid = 1;          //MAV_COMP_ID_IMU;   // We do not check for comp id
@@ -266,6 +275,7 @@ static void startup_ground(void)
     // mid-flight, so set the serial ports non-blocking once we are
     // ready to fly
     hal.uartA->set_blocking_writes(false);
+    hal.uartB->set_blocking_writes(false);
     hal.uartC->set_blocking_writes(false);
     if (hal.uartD != NULL) {
         hal.uartD->set_blocking_writes(false);
@@ -304,6 +314,13 @@ static void set_mode(enum FlightMode mode)
         // restore last gains
         autotune_restore();
     }
+
+    // zero initial pitch and highest airspeed on mode change
+    auto_state.highest_airspeed = 0;
+    auto_state.initial_pitch_cd = ahrs.pitch_sensor;
+
+    // disable taildrag takeoff on mode change
+    auto_state.fbwa_tdrag_takeoff_mode = false;
 
     switch(control_mode)
     {
@@ -350,8 +367,6 @@ static void set_mode(enum FlightMode mode)
     case AUTO:
         auto_throttle_mode = true;
         next_WP_loc = prev_WP_loc = current_loc;
-        auto_state.highest_airspeed = 0;
-        auto_state.initial_pitch_cd = ahrs.pitch_sensor;
         // start or resume the mission, based on MIS_AUTORESET
         mission.start_or_resume();
         break;
@@ -384,6 +399,7 @@ static void set_mode(enum FlightMode mode)
     rollController.reset_I();
     pitchController.reset_I();
     yawController.reset_I();    
+    steerController.reset_I();    
 }
 
 // exit_mode - perform any cleanup required when leaving a flight mode

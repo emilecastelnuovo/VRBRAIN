@@ -261,6 +261,10 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+// GPS port
+#ifndef GPS_PORT_DEFAULT
+ # define GPS_PORT_DEFAULT       1    // port 1 internal port, port2 external port.
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 // GROUND_START_DELAY
@@ -428,7 +432,7 @@
 // Navigation defaults
 //
 #ifndef WP_RADIUS_DEFAULT
- # define WP_RADIUS_DEFAULT              30
+ # define WP_RADIUS_DEFAULT              90
 #endif
 
 #ifndef LOITER_RADIUS_DEFAULT

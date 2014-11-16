@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduPlane V3.1.0-beta2"
+#define THISFIRMWARE "ArduPlane V3.1.1"
 /*
    Lead developer: Andrew Tridgell
  
@@ -163,12 +163,9 @@ static DataFlash_APM1 DataFlash;
 static DataFlash_APM2 DataFlash;
 #elif CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
 static DataFlash_VRBRAIN DataFlash;
-#elif CONFIG_HAL_BOARD == HAL_BOARD_AVR_SITL
-static DataFlash_SITL DataFlash;
-#elif CONFIG_HAL_BOARD == HAL_BOARD_PX4
-static DataFlash_File DataFlash("/fs/microsd/APM/logs");
-#elif CONFIG_HAL_BOARD == HAL_BOARD_LINUX
-static DataFlash_File DataFlash("logs");
+#elif defined(HAL_BOARD_LOG_DIRECTORY)
+static DataFlash_File DataFlash(HAL_BOARD_LOG_DIRECTORY);
+
 #else
 // no dataflash driver
 DataFlash_Empty DataFlash;
@@ -233,23 +230,9 @@ static AP_Compass_HIL compass;
 AP_ADC_ADS7844 apm1_adc;
 #endif
 
-#if CONFIG_INS_TYPE == HAL_INS_MPU6000
-AP_InertialSensor_MPU6000 ins;
-#elif CONFIG_INS_TYPE == HAL_INS_PX4
-AP_InertialSensor_PX4 ins;
-#elif CONFIG_INS_TYPE == HAL_INS_VRBRAIN
-AP_InertialSensor_VRBRAIN ins;
-#elif CONFIG_INS_TYPE == HAL_INS_HIL
-AP_InertialSensor_HIL ins;
-#elif CONFIG_INS_TYPE == HAL_INS_OILPAN
-AP_InertialSensor_Oilpan ins( &apm1_adc );
-#elif CONFIG_INS_TYPE == HAL_INS_FLYMAPLE
-AP_InertialSensor_Flymaple ins;
-#elif CONFIG_INS_TYPE == HAL_INS_L3G4200D
-AP_InertialSensor_L3G4200D ins;
-#else
-  #error Unrecognised CONFIG_INS_TYPE setting.
-#endif // CONFIG_INS_TYPE
+
+AP_InertialSensor ins;
+
 
 // Inertial Navigation EKF
 #if AP_AHRS_NAVEKF_AVAILABLE
@@ -309,9 +292,16 @@ static AP_SpdHgtControl *SpdHgt_Controller = &TECS_controller;
 static AP_HAL::AnalogSource *rssi_analog_source;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Sonar
+// rangefinder
 ////////////////////////////////////////////////////////////////////////////////
-static RangeFinder sonar;
+static RangeFinder rangefinder;
+
+static struct {
+    bool in_range;
+    float correction;
+    uint32_t last_correction_time_ms;
+    uint8_t in_range_count;
+} rangefinder_state;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Relay
@@ -520,7 +510,6 @@ static struct {
     locked_course_err : 0
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // flight mode specific
 ////////////////////////////////////////////////////////////////////////////////
@@ -540,6 +529,9 @@ static struct {
 
     // should we use cross-tracking for this waypoint?
     bool no_crosstrack:1;
+
+    // in FBWA taildragger takeoff mode
+    bool fbwa_tdrag_takeoff_mode:1;
 
     // Altitude threshold to complete a takeoff command in autonomous modes.  Centimeters
     int32_t takeoff_altitude_cm;
@@ -565,6 +557,7 @@ static struct {
     inverted_flight  : false,
     next_wp_no_crosstrack : true,
     no_crosstrack : true,
+    fbwa_tdrag_takeoff_mode : false,
     takeoff_altitude_cm : 0,
     takeoff_pitch_cd : 0,
     highest_airspeed : 0,
@@ -789,7 +782,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { compass_accumulate,     1,   1500 },
     { barometer_accumulate,   1,    900 },
     { update_notify,          1,    300 },
-    { read_sonars,            1,    500 },
+    { read_rangefinder,       1,    500 },
     { one_second_loop,       50,   1000 },
     { check_long_failsafe,   15,   1000 },
     { read_receiver_rssi,     5,   1000 },
@@ -802,7 +795,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 #if FRSKY_TELEM_ENABLED == ENABLED
     { telemetry_send,        10,    100 },	
 #endif
-
+    { terrain_update,         5,    500 },
 };
 
 // setup the var_info table
@@ -829,9 +822,8 @@ void setup() {
 void loop()
 {
     // wait for an INS sample
-    if (!ins.wait_for_sample(1000)) {
-        return;
-    }
+    ins.wait_for_sample();
+
     uint32_t timer = hal.scheduler->micros();
 
     delta_us_fast_loop  = timer - fast_loopTimer_us;
@@ -985,7 +977,7 @@ static void obc_fs_check(void)
 {
 #if OBC_FAILSAFE == ENABLED
     // perform OBC failsafe checks
-    obc.check(OBC_MODE(control_mode), failsafe.last_heartbeat_ms);
+    obc.check(OBC_MODE(control_mode), failsafe.last_heartbeat_ms, geofence_breached(), failsafe.last_valid_rc_ms);
 #endif
 }
 
@@ -1029,7 +1021,6 @@ static void one_second_loop()
     AP_Notify::flags.armed = arming.is_armed() || arming.arming_required() == AP_Arming::NO;
 
 #if AP_TERRAIN_AVAILABLE
-    terrain.update();
     if (should_log(MASK_LOG_GPS)) {
         terrain.log_terrain_data(DataFlash);
     }
@@ -1039,7 +1030,7 @@ static void one_second_loop()
 static void log_perf_info()
 {
     if (scheduler.debug() != 0) {
-        hal.console->printf_P(PSTR("G_Dt_max=%lu\n"), (unsigned long)G_Dt_max);
+        gcs_send_text_fmt(PSTR("G_Dt_max=%lu\n"), (unsigned long)G_Dt_max);
     }
     if (should_log(MASK_LOG_PM))
         Log_Write_Performance();
@@ -1052,6 +1043,13 @@ static void compass_save()
     if (g.compass_enabled) {
         compass.save_offsets();
     }
+}
+
+static void terrain_update(void)
+{
+#if AP_TERRAIN_AVAILABLE
+    terrain.update();
+#endif
 }
 
 /*
@@ -1190,9 +1188,6 @@ static void handle_auto_mode(void)
             // during final approach constrain roll to the range
             // allowed for level flight
             nav_roll_cd = constrain_int32(nav_roll_cd, -g.level_roll_limit*100UL, g.level_roll_limit*100UL);
-            
-            // hold pitch above the specified land pitch in final approach
-            nav_pitch_cd = constrain_int32(nav_pitch_cd, g.land_pitch_cd, nav_pitch_cd);
         } else {
             if (!airspeed.use()) {
                 // when not under airspeed control, don't allow
@@ -1319,6 +1314,16 @@ static void update_flight_mode(void)
             nav_pitch_cd = 0;
             channel_throttle->servo_out = 0;
         }
+        if (g.fbwa_tdrag_chan > 0) {
+            // check for the user enabling FBWA taildrag takeoff mode
+            bool tdrag_mode = (hal.rcin->read(g.fbwa_tdrag_chan-1) > 1700);
+            if (tdrag_mode && !auto_state.fbwa_tdrag_takeoff_mode) {
+                if (auto_state.highest_airspeed < g.takeoff_tdrag_speed1) {
+                    auto_state.fbwa_tdrag_takeoff_mode = true;
+                    gcs_send_text_P(SEVERITY_LOW, PSTR("FBWA tdrag mode\n"));
+                }
+            }
+        }
         break;
     }
 
@@ -1427,7 +1432,7 @@ static void set_flight_stage(AP_SpdHgtControl::FlightStage fs)
 {
     //if just now entering land flight stage
     if (fs == AP_SpdHgtControl::FLIGHT_LAND_APPROACH &&
-            flight_stage != AP_SpdHgtControl::FLIGHT_LAND_APPROACH) {
+        flight_stage != AP_SpdHgtControl::FLIGHT_LAND_APPROACH) {
 
 #if GEOFENCE_ENABLED == ENABLED 
         if (g.fence_autoenable == 1) {
@@ -1438,7 +1443,6 @@ static void set_flight_stage(AP_SpdHgtControl::FlightStage fs)
             }
         }
 #endif
-
     }
     
     flight_stage = fs;

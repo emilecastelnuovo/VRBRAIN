@@ -206,6 +206,20 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: User
     GSCALAR(takeoff_throttle_slewrate, "TKOFF_THR_SLEW",  0),
 
+    // @Param: TKOFF_FLAP_PCNT
+    // @DisplayName: Takeoff flap percentage
+    // @Description: The amount of flaps (as a percentage) to apply in automatic takeoff
+    // @Range: 0 100
+    // @Units: Percent
+    // @User: Advanced
+    GSCALAR(takeoff_flap_percent,     "TKOFF_FLAP_PCNT", 0),
+
+    // @Param: FBWA_TDRAG_CHAN
+    // @DisplayName: FBWA taildragger channel
+    // @Description: This is a RC input channel which when it goes above 1700 enables FBWA taildragger takeoff mode. It should be assigned to a momentary switch. Once this feature is enabled it will stay enabled until the aircraft goes above TKOFF_TDRAG_SPD1 airspeed, changes mode, or the pitch goes above the initial pitch when this is engaged or goes below 0 pitch. When enabled the elevator will be forced to TKOFF_TDRAG_ELEV. This option allows for easier takeoffs on taildraggers in FBWA mode, and also makes it easier to test auto-takeoff steering handling in FBWA. Setting it to 0 disables this option.
+    // @User: Standard
+    GSCALAR(fbwa_tdrag_chan,          "FBWA_TDRAG_CHAN",  0),
+
     // @Param: LEVEL_ROLL_LIMIT
     // @DisplayName: Level flight roll limit
     // @Description: This controls the maximum bank angle in degrees during flight modes where level flight is desired, such as in the final stages of landing, and during auto takeoff. This should be a small angle (such as 5 degrees) to prevent a wing hitting the runway during takeoff or landing. Setting this to zero will completely disable heading hold on auto takeoff and final landing approach.
@@ -220,7 +234,7 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Description: Used in autoland for planes without airspeed sensors in hundredths of a degree
     // @Units: centi-Degrees
     // @User: Advanced
-    GSCALAR(land_pitch_cd,          "LAND_PITCH_CD",  0),
+    ASCALAR(land_pitch_cd,          "LAND_PITCH_CD",  0),
 
     // @Param: LAND_FLARE_ALT
     // @DisplayName: Landing flare altitude
@@ -346,7 +360,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: FENCE_AUTOENABLE
     // @DisplayName: Fence automatic enable
-    // @Description: When set to 1, gefence automatically enables after an auto takeoff and automatically disables at the beginning of an auto landing.  When on the ground before takeoff the fence is disabled.
+    // @Description: When set to 1, gefence automatically enables after an auto takeoff and automatically disables at the beginning of an auto landing.  When on the ground before takeoff the fence is disabled. It is highly recommended to not use this option for line of sight flying and use a fence enable channel instead.
     // @Values: 0:NoAutoEnable,1:AutoEnable
     // @User: Standard
     GSCALAR(fence_autoenable,       "FENCE_AUTOENABLE", 0),
@@ -411,7 +425,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: THR_MIN
     // @DisplayName: Minimum Throttle
-    // @Description: The minimum throttle setting to which the autopilot will apply.
+    // @Description: The minimum throttle setting (as a percentage) which the autopilot will apply. For the final stage of an automatic landing this is always zero.
     // @Units: Percent
     // @Range: 0 100
     // @Increment: 1
@@ -420,7 +434,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: THR_MAX
     // @DisplayName: Maximum Throttle
-    // @Description: The maximum throttle setting as a percentage which the autopilot will apply.
+    // @Description: The maximum throttle setting (as a percentage) which the autopilot will apply.
     // @Units: Percent
     // @Range: 0 100
     // @Increment: 1
@@ -444,6 +458,15 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @Increment: 1
     // @User: Standard
     ASCALAR(throttle_slewrate,      "THR_SLEWRATE",   100),
+
+    // @Param: FLAP_SLEWRATE
+    // @DisplayName: Flap slew rate
+    // @Description: maximum percentage change in flap output per second. A setting of 25 means to not change the flap by more than 25% of the full flap range in one second. A value of 0 means no rate limiting.
+    // @Units: Percent
+    // @Range: 0 100
+    // @Increment: 1
+    // @User: Advanced
+    GSCALAR(flap_slewrate,          "FLAP_SLEWRATE",   75),
 
     // @Param: THR_SUPP_MAN
     // @DisplayName: Throttle suppress manual passthru
@@ -494,7 +517,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: FS_SHORT_ACTN
     // @DisplayName: Short failsafe action
-    // @Description: The action to take on a short (FS_SHORT_TIMEOUT) failsafe event in AUTO, GUIDED or LOITER modes. A short failsafe event in stabilization modes will always cause an immediate change to CIRCLE mode. In AUTO mode you can choose whether it will enter CIRCLE mode or continue with the mission. If FS_SHORT_ACTN is 0 then it will continue with the mission, if it is 1 then it will enter CIRCLE mode, and then enter RTL if the failsafe condition persists for FS_LONG_TIMEOUT seconds. If it is set to 2 then the plane will enter FBWA mode with zero throttle and level attitude to glide in.
+    // @Description: The action to take on a short (FS_SHORT_TIMEOUT) failsafe event. A short failsafe even can be triggered either by loss of RC control (see THR_FS_VALUE) or by loss of GCS control (see FS_GCS_ENABL). A short failsafe event in stabilization and manual modes will cause an change to CIRCLE mode if FS_SHORT_ACTN is 0 or 1, and a change to FBWA mode if FS_SHORT_ACTN is 2. In all other modes (including AUTO and GUIDED mode) a short failsafe event will cause no mode change is FS_SHORT_ACTN is set to 0, will cause a change to CIRCLE mode if set to 1 and will change to FBWA mode if set to 2. Please see the documentation for FS_LONG_ACTN for the behaviour after FS_LONG_TIMEOUT seconds of failsafe.
     // @Values: 0:Continue,1:Circle/ReturnToLaunch,2:Glide
     // @User: Standard
     GSCALAR(short_fs_action,        "FS_SHORT_ACTN",  SHORT_FAILSAFE_ACTION),
@@ -510,7 +533,7 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Param: FS_LONG_ACTN
     // @DisplayName: Long failsafe action
-    // @Description: The action to take on a long (FS_LONG_TIMEOUT seconds) failsafe event in AUTO, GUIDED or LOITER modes. A long failsafe event in stabilization modes will always cause an RTL (ReturnToLaunch). In AUTO modes you can choose whether it will RTL or continue with the mission. If FS_LONG_ACTN is 0 then it will continue with the mission, if it is 1 then it will enter RTL mode. Note that if FS_SHORT_ACTN is 1, then the aircraft will enter CIRCLE mode after FS_SHORT_TIMEOUT seconds of failsafe, and will always enter RTL after FS_LONG_TIMEOUT seconds of failsafe, regardless of the FS_LONG_ACTN setting. If FS_LONG_ACTN is set to 2 then instead of using RTL it will enter a FBWA glide with zero throttle.
+    // @Description: The action to take on a long (FS_LONG_TIMEOUT seconds) failsafe event. If the aircraft was in a stabilization or manual mode when failsafe started and a long failsafe occurs then it will change to RTL mode if FS_LONG_ACTN is 0 or 1, and will change to FBWA if FS_LONG_ACTN is set to 2. If the aircraft was in an auto mode (such as AUTO or GUIDED) when the failsafe started then it will continue in the auto mode if FS_LONG_ACTN is set to 0, will change to RTL mode if FS_LONG_ACTN is set to 1 and will change to FBWA mode if FS_LONG_ACTN is set to 2. 
     // @Values: 0:Continue,1:ReturnToLaunch,2:Glide
     // @User: Standard
     GSCALAR(long_fs_action,         "FS_LONG_ACTN",   LONG_FAILSAFE_ACTION),
@@ -843,6 +866,14 @@ const AP_Param::Info var_info[] PROGMEM = {
     // @User: Advanced
     GSCALAR(flap_2_speed,           "FLAP_2_SPEED",   FLAP_2_SPEED),
 
+    // @Param: LAND_FLAP_PERCNT
+    // @DisplayName: Landing flap percentage
+    // @Description: The amount of flaps (as a percentage) to apply in the landing approach and flare of an automatic landing
+    // @Range: 0 100
+    // @Units: Percent
+    // @User: Advanced
+    GSCALAR(land_flap_percent,     "LAND_FLAP_PERCNT", 0),
+
     // @Param: RSSI_PIN
     // @DisplayName: Receiver RSSI sensing pin
     // @Description: This selects an analog pin for the receiver RSSI voltage. It assumes the voltage is 5V for max rssi, 0V for minimum
@@ -883,6 +914,13 @@ const AP_Param::Info var_info[] PROGMEM = {
     GSCALAR(hil_err_limit,         "HIL_ERR_LIMIT",   5),
 #endif
 
+    // @Param: GPS_PORT
+    // @DisplayName: GPS Port Number
+    // @Description: GPS port.1 Internal board port, 2 External rail port.
+    // @Range: 1 2
+    // @User: Advanced
+    GSCALAR(gps_port, "GPS_PORT", GPS_PORT_DEFAULT),
+
     // barometer ground calibration. The GND_ prefix is chosen for
     // compatibility with previous releases of ArduPlane
     // @Group: GND_
@@ -910,7 +948,14 @@ const AP_Param::Info var_info[] PROGMEM = {
 
     // @Group: RNGFND
     // @Path: ../libraries/AP_RangeFinder/RangeFinder.cpp
-    GOBJECT(sonar,                  "RNGFND", RangeFinder),
+    GOBJECT(rangefinder,            "RNGFND", RangeFinder),
+
+    // @Param: RNGFND_LANDING
+    // @DisplayName: Enable rangefinder for landing
+    // @Description: This enables the use of a rangefinder for automatic landing. The rangefinder will be used both on the landing approach and for final flare
+    // @Values: 0:Disabled,1:Enabled
+    // @User: Standard
+    GSCALAR(rangefinder_landing,    "RNGFND_LANDING",   0),
 
 #if AP_TERRAIN_AVAILABLE
     // @Group: TERRAIN_
