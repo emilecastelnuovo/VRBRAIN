@@ -351,7 +351,7 @@ test_ins(uint8_t argc, const Menu::arg *argv)
     uint8_t medium_loopCounter = 0;
 
 	while(1){
-        ins.wait_for_sample(1000);
+        ins.wait_for_sample();
 
         ahrs.update();
 
@@ -373,9 +373,9 @@ test_ins(uint8_t argc, const Menu::arg *argv)
                             (uint16_t)ahrs.yaw_sensor / 100,
                             gyros.x, gyros.y, gyros.z,
                             accels.x, accels.y, accels.z);
-    }
-    if(cliSerial->available() > 0){
-        return (0);
+        if(cliSerial->available() > 0){
+            return (0);
+        }
     }
 }
 
@@ -411,7 +411,7 @@ test_mag(uint8_t argc, const Menu::arg *argv)
     uint8_t medium_loopCounter = 0;
 
     while(1) {
-        ins.wait_for_sample(1000);
+        ins.wait_for_sample();
         ahrs.update();
 
         medium_loopCounter++;
@@ -457,12 +457,15 @@ test_mag(uint8_t argc, const Menu::arg *argv)
 static int8_t
 test_sonar(uint8_t argc, const Menu::arg *argv)
 {
-    if (!sonar.enabled()) {
+    init_sonar();
+    delay(20);
+    sonar.update();
+
+    if (!sonar.healthy()) {
         cliSerial->println_P(PSTR("WARNING: Sonar is not enabled"));
     }
 
     print_hit_enter();
-    init_sonar();
     
     float sonar_dist_cm_min = 0.0f;
     float sonar_dist_cm_max = 0.0f;
@@ -474,10 +477,11 @@ test_sonar(uint8_t argc, const Menu::arg *argv)
 
 	while (true) {
         delay(20);
+        sonar.update();
         uint32_t now = millis();
-
-        float dist_cm = sonar.distance_cm();
-        float voltage = sonar.voltage();
+    
+        float dist_cm = sonar.distance_cm(0);
+        float voltage = sonar.voltage_mv(0);
         if (sonar_dist_cm_min == 0.0f) {
             sonar_dist_cm_min = dist_cm;
             voltage_min = voltage;
@@ -487,8 +491,8 @@ test_sonar(uint8_t argc, const Menu::arg *argv)
         voltage_min = min(voltage_min, voltage);
         voltage_max = max(voltage_max, voltage);
 
-        dist_cm = sonar2.distance_cm();
-        voltage = sonar2.voltage();
+        dist_cm = sonar.distance_cm(1);
+        voltage = sonar.voltage_mv(1);
         if (sonar2_dist_cm_min == 0.0f) {
             sonar2_dist_cm_min = dist_cm;
             voltage2_min = voltage;

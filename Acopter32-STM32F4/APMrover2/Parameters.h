@@ -68,6 +68,7 @@ public:
         k_param_skip_gyro_cal,
         k_param_gcs2,       // stream rates for uartD
         k_param_serial2_baud_old,
+        k_param_serial2_protocol,
 
         //
         // 130: Sensor parameters
@@ -129,12 +130,13 @@ public:
 
         // obstacle control
         k_param_sonar_enabled = 190, // deprecated, can be removed
-        k_param_sonar, // sonar object
+        k_param_sonar_old, // unused
         k_param_sonar_trigger_cm,
         k_param_sonar_turn_angle,
         k_param_sonar_turn_time,
-        k_param_sonar2, // sonar2 object
+        k_param_sonar2_old, // unused
         k_param_sonar_debounce,
+        k_param_sonar, // sonar object
         
         //
         // 210: driving modes
@@ -212,6 +214,7 @@ public:
     AP_Int16    serial1_baud;
 #if MAVLINK_COMM_NUM_BUFFERS > 2
     AP_Int16    serial2_baud;
+    AP_Int8     serial2_protocol;
 #endif
     AP_Int8     telem_delay;
     AP_Int8     skip_gyro_cal;
@@ -239,15 +242,17 @@ public:
     RC_Channel_aux	rc_6;
     RC_Channel_aux	rc_7;
     RC_Channel_aux	rc_8;
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
     RC_Channel_aux rc_9;
 #endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
     RC_Channel_aux rc_10;
     RC_Channel_aux rc_11;
 #endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
     RC_Channel_aux rc_12;
+    RC_Channel_aux rc_13;
+    RC_Channel_aux rc_14;
 #endif
 
     // Throttle
@@ -302,15 +307,17 @@ public:
         rc_6(CH_6),
         rc_7(CH_7),
         rc_8(CH_8),
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
         rc_9                                    (CH_9),
 #endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
         rc_10                                   (CH_10),
         rc_11                                   (CH_11),
 #endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
+#if CONFIG_HAL_BOARD == HAL_BOARD_PX4 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
         rc_12                                   (CH_12),
+        rc_13                                   (CH_13),
+        rc_14                                   (CH_14),
 #endif
 
         // PID controller    initial P        initial I        initial D        initial imax
