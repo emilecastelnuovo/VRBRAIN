@@ -144,11 +144,13 @@ void HAL_VRBRAIN::init(int argc,char* const argv[]) const
 
   //_member->init();
   i2c->begin();
-  i2c2->begin();
+
+  if(i2c2 != NULL) {
+      i2c2->begin();
+      detect_compass();
+  }
 
   spi->init(NULL);
-
-  detect_compass();
 
   analogin->init(NULL);
   storage->init(NULL);
