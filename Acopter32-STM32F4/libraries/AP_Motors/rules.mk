@@ -20,6 +20,8 @@ cppSRCS_$(d) += AP_MotorsOctaQuad.cpp
 cppSRCS_$(d) += AP_MotorsQuad.cpp
 cppSRCS_$(d) += AP_MotorsTri.cpp
 cppSRCS_$(d) += AP_MotorsY6.cpp
+cppSRCS_$(d) += AP_MotorsSingle.cpp
+cppSRCS_$(d) += AP_MotorsCoax.cpp
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)
