@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduCopter V3.2"
+#define THISFIRMWARE "ArduCopter V3.2.1-rc1"
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -378,6 +378,7 @@ static union {
         uint8_t motor_test          : 1; // 16  // true if we are currently performing the motors test
         uint8_t initialised         : 1; // 17  // true once the init_ardupilot function has completed.  Extended status to GCS is not sent until this completes
         uint8_t land_complete_maybe : 1; // 18  // true if we may have landed (less strict version of land_complete)
+        uint8_t throttle_zero       : 1; // 19  // true if the throttle stick is at zero, debounced
     };
     uint32_t value;
 } ap;
@@ -787,7 +788,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { arm_motors_check,     40,      10 },
     { auto_trim,            40,     140 },
     { update_altitude,      40,    1000 },
-    { run_nav_updates,      40,     800 },
+    { run_nav_updates,      8,      800 },
     { update_thr_cruise,    40,     100 },
     { three_hz_loop,       133,      90 },
     { compass_accumulate,    8,     420 },
@@ -797,7 +798,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
 #endif
     { update_notify,         8,     120 },
     { one_hz_loop,         400,     420 },
-    { ekf_dcm_check,            40,      20 },
+    { ekf_dcm_check,        40,      20 },
     { crash_check,          40,      20 },
     { gcs_check_input,	     8,    550 },
     { gcs_send_heartbeat,  400,    150 },
@@ -855,7 +856,7 @@ static const AP_Scheduler::Task scheduler_tasks[] PROGMEM = {
     { arm_motors_check,     10,      10 },
     { auto_trim,            10,     140 },
     { update_altitude,      10,    1000 },
-    { run_nav_updates,      10,     800 },
+    { run_nav_updates,       4,     800 },
     { update_thr_cruise,     1,      50 },
     { three_hz_loop,        33,      90 },
     { compass_accumulate,    2,     420 },
