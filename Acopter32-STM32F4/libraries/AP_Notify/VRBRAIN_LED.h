@@ -1,6 +1,7 @@
 /*
-   ToshibaLED driver
-*/
+ *  AP_Notify Library. 
+ * based upon a prototype library by David "Buzz" Bussenschutt.
+ */
 
 /*
    This program is free software: you can redistribute it and/or modify
@@ -17,15 +18,19 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "ToshibaLED.h"
+#ifndef __VRBRAIN_LED_H__
+#define __VRBRAIN_LED_H__
 
-#define TOSHIBA_LED_BRIGHT  0xFF    // full brightness
-#define TOSHIBA_LED_MEDIUM  0x80    // medium brightness
-#define TOSHIBA_LED_DIM     0x11    // dim
-#define TOSHIBA_LED_OFF     0x00    // off
+#include "RGBLed.h"
+#include "AP_BoardLED.h"
 
-ToshibaLED::ToshibaLED(): 
-    RGBLed(TOSHIBA_LED_OFF, TOSHIBA_LED_BRIGHT, TOSHIBA_LED_MEDIUM, TOSHIBA_LED_DIM)
-{
 
-}
+class VRBRAIN_LED: public RGBLed {
+public:
+    VRBRAIN_LED();
+
+    bool hw_init(void);
+    bool hw_set_rgb(uint8_t r, uint8_t g, uint8_t b);
+};
+
+#endif

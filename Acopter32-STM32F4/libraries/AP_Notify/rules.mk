@@ -19,6 +19,8 @@ cppSRCS_$(d) += ToshibaLED_I2C.cpp
 cppSRCS_$(d) += ToshibaLED_PX4.cpp
 cppSRCS_$(d) += ToshibaLED.cpp
 cppSRCS_$(d) += ToneAlarm_PX4.cpp
+cppSRCS_$(d) += RGBLed.cpp
+
 
 cFILES_$(d) := $(cSRCS_$(d):%=$(d)/%)
 cppFILES_$(d) := $(cppSRCS_$(d):%=$(d)/%)

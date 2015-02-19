@@ -17,40 +17,40 @@
 #include <AP_Notify.h>
 
 // static flags, to allow for direct class update from device drivers
-struct AP_Notify::notify_type AP_Notify::flags;
+struct AP_Notify::notify_flags_type AP_Notify::flags;
+struct AP_Notify::notify_events_type AP_Notify::events;
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
+    Buzzer buzzer;
+    ExternalLED externalled;
+    AP_BoardLED boardled;
+    NotifyDevice *AP_Notify::_devices[CONFIG_NOTIFY_DEVICES_COUNT] = {&boardled, &externalled, &buzzer};
+#else
+    AP_BoardLED boardled;
+    ToshibaLED_I2C toshibaled;
+    NotifyDevice *AP_Notify::_devices[CONFIG_NOTIFY_DEVICES_COUNT] = {&boardled, &toshibaled};
+#endif
 // initialisation
 void AP_Notify::init(bool enable_external_leds)
 {
+    // clear all flags and events
+    memset(&AP_Notify::flags, 0, sizeof(AP_Notify::flags));
+    memset(&AP_Notify::events, 0, sizeof(AP_Notify::events));
+
     AP_Notify::flags.external_leds = enable_external_leds;
 
-    boardled.init();
-#if CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN
-    toshibaled.init();
-#endif
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-    tonealarm.init();
-#endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-    externalled.init();
-    buzzer.init();
-#endif
+    for (int i = 0; i < CONFIG_NOTIFY_DEVICES_COUNT; i++) {
+        _devices[i]->init();
+    }
 }
 
 // main update function, called at 50Hz
 void AP_Notify::update(void)
 {
-    boardled.update();
-#if CONFIG_HAL_BOARD != HAL_BOARD_VRBRAIN
-    toshibaled.update();
-#endif
+    for (int i = 0; i < CONFIG_NOTIFY_DEVICES_COUNT; i++) {
+        _devices[i]->update();
+    }
 
-#if CONFIG_HAL_BOARD == HAL_BOARD_PX4
-    tonealarm.update();
-#endif
-#if CONFIG_HAL_BOARD == HAL_BOARD_APM1 || CONFIG_HAL_BOARD == HAL_BOARD_APM2 || CONFIG_HAL_BOARD == HAL_BOARD_VRBRAIN
-    externalled.update();
-    buzzer.update();
-#endif
+    //reset the events
+    memset(&AP_Notify::events, 0, sizeof(AP_Notify::events));
 }

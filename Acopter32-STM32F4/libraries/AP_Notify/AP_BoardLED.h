@@ -20,6 +20,7 @@
 
 #include <AP_Common.h>
 #include <AP_HAL.h>
+#include "NotifyDevice.h"
 
 #define HIGH 1
 #define LOW 0
@@ -64,12 +65,12 @@
 #error "Unknown board type in AP_Notify"
 #endif
 
-class AP_BoardLED
+class AP_BoardLED: public NotifyDevice
 {
 public:
     // initialise the LED driver
-    void init(void);
-    
+    bool init(void);
+
     // should be called at 50Hz
     void update(void);
 

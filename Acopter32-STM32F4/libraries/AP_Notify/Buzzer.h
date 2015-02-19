@@ -30,7 +30,9 @@
 
 #define BUZZER_ARMING_BUZZ_MS   3000    // arming buzz length in milliseconds (i.e. 3 seconds)
 
-class Buzzer
+#include "NotifyDevice.h"
+
+class Buzzer: public NotifyDevice
 {
 public:
     /// Constructor
@@ -42,7 +44,7 @@ public:
     {}
 
     /// init - initialise the buzzer
-    void init(void);
+    bool init(void);
 
     /// update - updates buzzer according to timed_updated.  Should be called at 50Hz
     void update();
@@ -57,7 +59,8 @@ public:
         GPS_GLITCH = 3,
         ARMING_BUZZ = 4,
         BARO_GLITCH = 5,
-        EKF_BAD = 6
+        EKF_BAD = 6,
+        SINGLE_LONG_BUZZ = 7
     };
 
     /// play_pattern - plays the defined buzzer pattern
